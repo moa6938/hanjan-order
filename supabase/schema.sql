@@ -206,6 +206,23 @@ as $$
   select * from public.orders where id = order_id;
 $$;
 
+drop function if exists public.get_order_by_code(text);
+
+create function public.get_order_by_code(order_code text)
+returns setof public.orders
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.orders
+  where trim(order_code) ~* '^[0-9a-f]{8}$'
+    and order_day >= ((now() at time zone 'Asia/Seoul')::date - 7)
+    and upper(substr(replace(id::text, '-', ''), 1, 8)) = upper(trim(order_code))
+  order by created_at desc
+  limit 1;
+$$;
+
 create or replace function public.admin_check_pin(pin text)
 returns boolean
 language sql
@@ -434,6 +451,7 @@ $$;
 revoke all on function public.create_order(jsonb, text, text, integer, uuid) from public;
 revoke all on function public.list_menu_items() from public;
 revoke all on function public.get_order(uuid) from public;
+revoke all on function public.get_order_by_code(text) from public;
 revoke all on function public.admin_check_pin(text) from public;
 revoke all on function public.admin_list_orders(text) from public;
 revoke all on function public.admin_list_orders_by_month(text, date) from public;
@@ -448,6 +466,7 @@ revoke all on function public.admin_remove_menu(text, text) from public;
 grant execute on function public.create_order(jsonb, text, text, integer, uuid) to anon, authenticated;
 grant execute on function public.list_menu_items() to anon, authenticated;
 grant execute on function public.get_order(uuid) to anon, authenticated;
+grant execute on function public.get_order_by_code(text) to anon, authenticated;
 grant execute on function public.admin_check_pin(text) to anon, authenticated;
 grant execute on function public.admin_list_orders(text) to anon, authenticated;
 grant execute on function public.admin_list_orders_by_month(text, date) to anon, authenticated;

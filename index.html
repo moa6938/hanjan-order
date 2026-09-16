@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#172238" />
     <meta name="description" content="2층 음료 주문과 1층 제조 접수를 연결하는 간단한 주문 화면" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css?v=stats-csv-1" />
+    <link rel="stylesheet" href="/styles.css?v=order-lookup-1" />
     <title>한 잔 주문</title>
   </head>
   <body>
@@ -46,6 +46,19 @@
           <button class="primary-button" type="submit">메뉴 선택하기</button>
         </form>
 
+        <form id="order-lookup" class="lookup-card">
+          <div>
+            <h2>주문내역 다시 찾기</h2>
+            <p>아이폰 QR 스캐너를 닫았다면 주문할 때 받은 확인코드를 입력하세요.</p>
+          </div>
+          <label class="note-field">
+            <span>주문 확인코드</span>
+            <input id="order-lookup-code" maxlength="8" pattern="[A-Fa-f0-9]{8}" placeholder="예: 2BEF99B8" autocomplete="off" autocapitalize="characters" required />
+          </label>
+          <button class="secondary-button" type="submit">내 주문 찾기</button>
+          <p id="order-lookup-error" class="error-message" role="alert"></p>
+        </form>
+
         <form id="order-form" class="order-form" hidden>
           <div class="order-summary">
             <strong id="order-summary-text"></strong>
@@ -81,6 +94,12 @@
             <span id="ticket-status" class="status-badge"></span>
           </div>
           <p id="ticket-customer" class="ticket-customer"></p>
+          <div class="ticket-code">
+            <span>주문 확인코드</span>
+            <strong id="ticket-code"></strong>
+            <button id="copy-order-code" type="button">코드 복사</button>
+          </div>
+          <p class="ticket-code-help">아이폰 QR 스캐너를 닫기 전에 코드를 복사하거나 캡처해두세요.</p>
           <p id="ticket-items"></p>
           <p id="ticket-message" class="ticket-message"></p>
           <button id="new-order-button" class="secondary-button" type="button">새 주문하기</button>

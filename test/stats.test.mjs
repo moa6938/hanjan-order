@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { reorderedMenuIds } from "../src/menu-order.js";
-import { activeOrderKey, clearActiveOrder, readActiveOrder, saveActiveOrder } from "../src/order-storage.js";
+import { activeOrderKey, clearActiveOrder, orderLookupCode, readActiveOrder, saveActiveOrder } from "../src/order-storage.js";
 import { ordersToCsv, summarizeOrders } from "../src/stats.js";
 
 const result = summarizeOrders([
@@ -48,6 +48,11 @@ clearActiveOrder(storage);
 assert.equal(readActiveOrder(storage), null);
 
 console.log("order storage test passed");
+
+assert.equal(orderLookupCode({ id: "2bef99b8-e3a4-4034-b5c1-f4cce74bee07" }), "2BEF99B8");
+assert.equal(orderLookupCode(null), "");
+
+console.log("order lookup code test passed");
 
 const menu = [
   { id: "ade-1", category: "ADE" },

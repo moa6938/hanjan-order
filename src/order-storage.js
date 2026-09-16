@@ -1,6 +1,10 @@
 export const activeOrderKey = "activeOrderId";
 const activeOrderSnapshotKey = "activeOrderSnapshot";
 
+export function orderLookupCode(order) {
+  return String(order?.id || "").replaceAll("-", "").slice(0, 8).toUpperCase();
+}
+
 export function saveActiveOrder(storage, order) {
   try {
     storage.setItem(activeOrderKey, order.id);

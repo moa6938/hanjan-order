@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import { reorderedMenuIds } from "./menu-order.js";
-import { activeOrderKey, clearActiveOrder, readActiveOrder, saveActiveOrder } from "./order-storage.js";
+import { activeOrderKey, clearActiveOrder, orderLookupCode, readActiveOrder, saveActiveOrder } from "./order-storage.js";
 import { ordersToCsv, summarizeOrders } from "./stats.js";
 
 const SUPABASE_URL = "https://oltgqudykkdsbifcuruy.supabase.co";
@@ -136,6 +136,9 @@ async function createOrder(items, note, customerName, partySize) {
 
 async function setupOrderView() {
   const intake = document.querySelector("#order-intake");
+  const lookupForm = document.querySelector("#order-lookup");
+  const lookupInput = document.querySelector("#order-lookup-code");
+  const lookupError = document.querySelector("#order-lookup-error");
   const form = document.querySelector("#order-form");
   const nameInput = document.querySelector("#customer-name");
   const menuList = document.querySelector("#menu-list");
@@ -236,6 +239,7 @@ async function setupOrderView() {
         if (!restoredActiveOrder) {
           form.hidden = true;
           intake.hidden = isTodayOrder(order) && order.status !== "canceled";
+          lookupForm.hidden = true;
           restoredActiveOrder = true;
         }
       } else if (!requestError) {
@@ -303,6 +307,7 @@ async function setupOrderView() {
       updateOrderAccess(cachedOrder, true);
       form.hidden = true;
       intake.hidden = isTodayOrder(cachedOrder) && cachedOrder.status !== "canceled";
+      lookupForm.hidden = true;
       restoredActiveOrder = true;
     }
     startOrderPolling(activeOrderId);
@@ -317,6 +322,30 @@ async function setupOrderView() {
   }
 
   partySizeInput.addEventListener("input", updateSubmitState);
+
+  lookupForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    lookupError.textContent = "";
+    const { data: order, error: requestError } = await supabase
+      .rpc("get_order_by_code", { order_code: lookupInput.value.trim() })
+      .maybeSingle();
+    if (requestError) {
+      lookupError.textContent = readableError(requestError);
+      return;
+    }
+    if (!order?.id) {
+      lookupError.textContent = "주문 확인코드를 다시 확인해 주세요.";
+      return;
+    }
+    rememberActiveOrder(order);
+    restoredActiveOrder = true;
+    showTicket(order);
+    updateOrderAccess(order, true);
+    form.hidden = true;
+    intake.hidden = isTodayOrder(order) && order.status !== "canceled";
+    lookupForm.hidden = true;
+    startOrderPolling(order.id);
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -350,6 +379,7 @@ async function setupOrderView() {
       updateOrderAccess(order);
       startOrderPolling(order.id);
       form.hidden = true;
+      lookupForm.hidden = true;
     } catch (requestError) {
       error.textContent = readableError(requestError);
     } finally {
@@ -369,6 +399,15 @@ async function setupOrderView() {
     }
   });
 
+  document.querySelector("#copy-order-code").addEventListener("click", async (event) => {
+    try {
+      await navigator.clipboard.writeText(orderLookupCode(currentOrder));
+      event.currentTarget.textContent = "복사됨";
+    } catch {
+      event.currentTarget.textContent = "코드를 길게 눌러 복사";
+    }
+  });
+
 }
 
 function showTicket(order) {
@@ -376,6 +415,8 @@ function showTicket(order) {
   const badge = document.querySelector("#ticket-status");
   document.querySelector("#ticket-id").textContent = displayId(order);
   document.querySelector("#ticket-customer").textContent = formatCustomer(order);
+  document.querySelector("#ticket-code").textContent = orderLookupCode(order);
+  document.querySelector("#copy-order-code").textContent = "코드 복사";
   document.querySelector("#ticket-items").textContent = formatItems(order.items);
   badge.textContent = statusLabels[order.status];
   badge.className = `status-badge status-${order.status}`;

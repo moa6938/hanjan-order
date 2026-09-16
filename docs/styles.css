@@ -79,6 +79,12 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .intake-card .order-meta { margin-bottom: 18px; }
 .guestbook-check { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #dfe4ee; border-radius: 14px; background: #f5f7fb; font-weight: 800; }
 .guestbook-check input { width: 22px; height: 22px; accent-color: #172238; }
+.lookup-card { display: grid; grid-template-columns: 1fr minmax(180px, 240px) auto; gap: 14px; align-items: end; max-width: 680px; margin-top: 14px; padding: 20px; border: 1px solid #dfe4ee; border-radius: 18px; background: #fff; }
+.lookup-card h2 { margin: 0; font-size: 1.1rem; }
+.lookup-card p:not(.error-message) { margin: 6px 0 0; color: #687386; font-size: 0.9rem; line-height: 1.45; }
+.lookup-card .note-field { margin-top: 0; }
+.lookup-card .secondary-button { min-height: 54px; }
+.lookup-card .error-message { grid-column: 1 / -1; margin: 0; }
 .order-form { margin-top: 38px; }
 .order-summary { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 24px; padding: 16px 18px; border-radius: 14px; background: #172238; color: #fff; }
 .order-summary button { min-height: 38px; padding: 0 12px; border: 1px solid #64718a; border-radius: 9px; background: transparent; color: #fff; font-weight: 750; }
@@ -141,6 +147,11 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .ticket-heading strong { font-size: 2rem; letter-spacing: -0.03em; }
 .ticket > p:not(.eyebrow) { color: #566176; line-height: 1.6; }
 .ticket .ticket-customer { margin-bottom: 4px; color: #172238; font-weight: 800; }
+.ticket-code { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; background: #fff4e8; }
+.ticket-code span { color: #687386; font-size: 0.85rem; font-weight: 750; }
+.ticket-code strong { margin-right: auto; font-size: 1.15rem; letter-spacing: 0.08em; user-select: all; }
+.ticket-code button { min-height: 36px; padding: 0 11px; border: 1px solid #d8b78e; border-radius: 9px; background: #fff; color: #172238; font-weight: 800; }
+.ticket .ticket-code-help { margin-top: 7px; font-size: 0.85rem; }
 .ticket #ticket-items { padding: 12px 14px; border-radius: 12px; background: #f5f7fb; white-space: pre-line; line-height: 1.9; }
 .ticket-message { font-weight: 750; color: #172238 !important; }
 
@@ -232,6 +243,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 @media (max-width: 720px) {
   main { padding-top: 38px; }
   .order-meta { grid-template-columns: 1fr; }
+  .lookup-card { grid-template-columns: 1fr; }
+  .lookup-card .error-message { grid-column: auto; }
   .menu-grid { grid-template-columns: 1fr; }
   .menu-card { min-height: 136px; }
   .admin-heading { align-items: stretch; flex-direction: column; }
