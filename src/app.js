@@ -270,6 +270,7 @@ async function setupOrderView() {
         card.querySelector("h2").textContent = item.name;
         card.querySelector(".menu-icon").textContent = item.icon;
         card.querySelector(".sold-out-label").hidden = item.is_available;
+        card.classList.toggle("is-selected", quantities.get(item.id) > 0);
         const output = card.querySelector("output");
         output.value = quantities.get(item.id);
         output.textContent = quantities.get(item.id);
@@ -282,6 +283,7 @@ async function setupOrderView() {
           quantities.set(item.id, next);
           output.value = next;
           output.textContent = next;
+          card.classList.toggle("is-selected", next > 0);
           updateSubmitState();
         });
         grid.append(card);
