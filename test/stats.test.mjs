@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { activeOrderKey, clearActiveOrder, readActiveOrder, saveActiveOrder } from "../src/order-storage.js";
 import { ordersToCsv, summarizeOrders } from "../src/stats.js";
 
 const result = summarizeOrders([
@@ -31,3 +32,18 @@ const csv = ordersToCsv([{
 assert.equal(csv, '"주문번호","주문일시","주문자","인원수","주문메뉴","요청사항","상태"\r\n"A026","2026-09-16 17:30","\'=테스트","3명","망고, 에이드 2잔 / 자몽 1잔","얼음 ""조금""","완료"');
 
 console.log("csv test passed");
+
+const values = new Map();
+const storage = {
+  getItem: (key) => values.get(key) ?? null,
+  setItem: (key, value) => values.set(key, value),
+  removeItem: (key) => values.delete(key)
+};
+const savedOrder = { id: "order-1", customer_name: "테스트", party_size: 2, items: [{ name: "망고", quantity: 2 }] };
+assert.equal(saveActiveOrder(storage, savedOrder), true);
+assert.equal(storage.getItem(activeOrderKey), "order-1");
+assert.deepEqual(readActiveOrder(storage), savedOrder);
+clearActiveOrder(storage);
+assert.equal(readActiveOrder(storage), null);
+
+console.log("order storage test passed");

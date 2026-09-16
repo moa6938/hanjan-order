@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
+import { activeOrderKey, clearActiveOrder, readActiveOrder, saveActiveOrder } from "./order-storage.js";
 import { ordersToCsv, summarizeOrders } from "./stats.js";
 
 const SUPABASE_URL = "https://oltgqudykkdsbifcuruy.supabase.co";
@@ -10,11 +11,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 const statusLabels = { new: "접수 대기", making: "제조 중", done: "완료", canceled: "취소됨" };
 const menuCategories = ["ADE", "NON SODA"];
-const activeOrderKey = "activeOrderId";
 const deviceIdKey = "drinkOrderDeviceId";
 const orderView = document.querySelector("#order-view");
 const adminView = document.querySelector("#admin-view");
 const isAdmin = location.hash === "#admin" || location.pathname === "/admin";
+const cookiePath = location.pathname.endsWith("/") ? location.pathname : location.pathname.replace(/[^/]*$/, "") || "/";
 
 (isAdmin ? adminView : orderView).hidden = false;
 document.title = isAdmin ? "주문 관리 · 한 잔 주문" : "음료 주문 · 한 잔 주문";
@@ -36,11 +37,23 @@ function formatTime(iso) {
 }
 
 function getDeviceId() {
-  let id = localStorage.getItem(deviceIdKey);
+  let id;
+  try {
+    id = localStorage.getItem(deviceIdKey);
+  } catch {
+    id = null;
+  }
+  const cookieId = document.cookie.match(new RegExp(`(?:^|; )${deviceIdKey}=([^;]*)`))?.[1];
+  id ||= cookieId && decodeURIComponent(cookieId);
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem(deviceIdKey, id);
   }
+  try {
+    localStorage.setItem(deviceIdKey, id);
+  } catch {
+    // The cookie below keeps the device ID when local storage is unavailable.
+  }
+  document.cookie = `${deviceIdKey}=${encodeURIComponent(id)}; Max-Age=31536000; Path=${cookiePath}; SameSite=Lax`;
   return id;
 }
 
@@ -50,6 +63,31 @@ function todayInSeoul() {
 
 function isTodayOrder(order) {
   return order.order_day === todayInSeoul();
+}
+
+function rememberActiveOrder(order) {
+  saveActiveOrder(localStorage, order);
+  saveActiveOrder(sessionStorage, order);
+  document.cookie = `${activeOrderKey}=${encodeURIComponent(order.id)}; Max-Age=2592000; Path=${cookiePath}; SameSite=Lax`;
+}
+
+function forgetActiveOrder() {
+  clearActiveOrder(localStorage);
+  clearActiveOrder(sessionStorage);
+  document.cookie = `${activeOrderKey}=; Max-Age=0; Path=${cookiePath}; SameSite=Lax`;
+}
+
+function rememberedOrderId() {
+  for (const storage of [localStorage, sessionStorage]) {
+    try {
+      const id = storage.getItem(activeOrderKey);
+      if (id) return id;
+    } catch {
+      // Try the next available persistence method.
+    }
+  }
+  const cookieId = document.cookie.match(new RegExp(`(?:^|; )${activeOrderKey}=([^;]*)`))?.[1];
+  return cookieId ? decodeURIComponent(cookieId) : null;
 }
 
 function setConnectionStatus(connected) {
@@ -109,6 +147,7 @@ async function setupOrderView() {
   let menu = [];
   let pollingTimer;
   let currentOrder;
+  let restoredActiveOrder = false;
   let submitting = false;
   let activeCategory = menuCategories[0];
 
@@ -190,8 +229,16 @@ async function setupOrderView() {
       const { data: order, error: requestError } = await supabase.rpc("get_order", { order_id: orderId }).maybeSingle();
       setConnectionStatus(!requestError);
       if (order) {
+        rememberActiveOrder(order);
         showTicket(order);
-        updateOrderAccess(order);
+        updateOrderAccess(order, !restoredActiveOrder);
+        if (!restoredActiveOrder) {
+          form.hidden = true;
+          intake.hidden = isTodayOrder(order) && order.status !== "canceled";
+          restoredActiveOrder = true;
+        }
+      } else if (!requestError) {
+        forgetActiveOrder();
       }
     };
     refresh();
@@ -246,6 +293,20 @@ async function setupOrderView() {
     setConnectionStatus(true);
   }
 
+  const cachedOrder = readActiveOrder(localStorage) || readActiveOrder(sessionStorage);
+  const activeOrderId = rememberedOrderId() || cachedOrder?.id;
+  if (activeOrderId) {
+    if (cachedOrder?.id === activeOrderId) {
+      rememberActiveOrder(cachedOrder);
+      showTicket(cachedOrder);
+      updateOrderAccess(cachedOrder, true);
+      form.hidden = true;
+      intake.hidden = isTodayOrder(cachedOrder) && cachedOrder.status !== "canceled";
+      restoredActiveOrder = true;
+    }
+    startOrderPolling(activeOrderId);
+  }
+
   try {
     await refreshMenu();
     setInterval(() => refreshMenu().catch(() => setConnectionStatus(false)), 5000);
@@ -282,7 +343,8 @@ async function setupOrderView() {
         document.querySelector("#customer-name").value,
         document.querySelector("#party-size").value
       );
-      localStorage.setItem(activeOrderKey, order.id);
+      rememberActiveOrder(order);
+      restoredActiveOrder = true;
       showTicket(order);
       updateOrderAccess(order);
       startOrderPolling(order.id);
@@ -305,22 +367,6 @@ async function setupOrderView() {
       intake.scrollIntoView({ behavior: "smooth" });
     }
   });
-
-  const activeOrderId = localStorage.getItem(activeOrderKey) || sessionStorage.getItem(activeOrderKey);
-  if (activeOrderId) {
-    localStorage.setItem(activeOrderKey, activeOrderId);
-    sessionStorage.removeItem(activeOrderKey);
-    const { data: order } = await supabase.rpc("get_order", { order_id: activeOrderId }).maybeSingle();
-    if (order) {
-      showTicket(order);
-      updateOrderAccess(order, true);
-      startOrderPolling(order.id);
-      form.hidden = true;
-      intake.hidden = isTodayOrder(order) && order.status !== "canceled";
-    } else {
-      localStorage.removeItem(activeOrderKey);
-    }
-  }
 
 }
 
