@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build --base=./"
+    "build": "vite build --base=./",
+    "test": "node test/stats.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.116.0",

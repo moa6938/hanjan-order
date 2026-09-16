@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
+import { summarizeOrders } from "./stats.js";
 
 const SUPABASE_URL = "https://oltgqudykkdsbifcuruy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Z0wEhJVmJyuS2dS8jXLvaQ_kat48hsY";
@@ -291,12 +292,50 @@ async function setupAdminView() {
   const menuForm = document.querySelector("#menu-add-form");
   const menuList = document.querySelector("#admin-menu-list");
   const menuError = document.querySelector("#menu-error");
+  const tabs = [...document.querySelectorAll("[data-admin-tab]")];
+  const panels = [...document.querySelectorAll(".admin-panel")];
+  const popularList = document.querySelector("#popular-menu-list");
   const orders = new Map();
   const knownOrderIds = new Set();
   let audioContext;
   let audioEnabled = false;
   let adminPin = "";
   let hasLoaded = false;
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      tabs.forEach((item) => item.setAttribute("aria-selected", String(item === tab)));
+      panels.forEach((panel) => { panel.hidden = panel.id !== `${tab.dataset.adminTab}-panel`; });
+    });
+  });
+
+  function renderStats() {
+    const summary = summarizeOrders([...orders.values()], todayInSeoul());
+    document.querySelector("#stats-date").textContent = new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "short"
+    }).format(new Date());
+    document.querySelector("#stat-orders").textContent = `${summary.orders}건`;
+    document.querySelector("#stat-drinks").textContent = `${summary.drinks}잔`;
+    document.querySelector("#stat-active").textContent = `${summary.active}건`;
+    document.querySelector("#stat-done").textContent = `${summary.done}건`;
+    document.querySelector("#stat-canceled").textContent = `${summary.canceled}건`;
+    popularList.replaceChildren();
+    if (!summary.popular.length) {
+      const empty = document.createElement("li");
+      empty.textContent = "아직 집계할 주문이 없어요.";
+      popularList.append(empty);
+      return;
+    }
+    summary.popular.forEach(([name, quantity]) => {
+      const item = document.createElement("li");
+      const label = document.createElement("span");
+      const count = document.createElement("strong");
+      label.textContent = name;
+      count.textContent = `${quantity}잔`;
+      item.append(label, count);
+      popularList.append(item);
+    });
+  }
 
   function chime() {
     if (!audioEnabled || !audioContext) return;
@@ -488,6 +527,7 @@ async function setupAdminView() {
             } else {
               orders.set(data.id, data);
               render();
+              renderStats();
             }
           });
           return button;
@@ -508,6 +548,7 @@ async function setupAdminView() {
       knownOrderIds.add(order.id);
     });
     render();
+    renderStats();
     setConnectionStatus(true);
     if (newOrderArrived) chime();
     hasLoaded = true;

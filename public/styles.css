@@ -140,14 +140,20 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .audio-button { padding: 0 18px; background: #ff6a5b; color: #fff; white-space: nowrap; }
 .audio-button.is-on { background: #22a06b; }
 
-.setup-card { display: grid; grid-template-columns: 1fr 170px; gap: 24px; align-items: center; margin-top: 32px; padding: 24px; border-radius: 20px; background: #172238; color: #fff; }
+.admin-tabs { display: flex; gap: 8px; margin-top: 28px; padding: 6px; border-radius: 16px; background: #e8ecf3; }
+.admin-tabs button { flex: 1; min-height: 48px; border: 0; border-radius: 11px; background: transparent; color: #687386; font-weight: 800; }
+.admin-tabs button[aria-selected="true"] { background: #fff; color: #172238; box-shadow: 0 4px 14px rgba(42, 53, 74, 0.1); }
+.admin-panel { margin-top: 24px; }
+.admin-panel[hidden] { display: none; }
+
+.setup-card { display: grid; grid-template-columns: 1fr 170px; gap: 24px; align-items: center; padding: 24px; border-radius: 20px; background: #172238; color: #fff; }
 .setup-card strong { font-size: 1.1rem; }
 .setup-card p { margin: 10px 0; color: #cbd3e2; word-break: break-all; }
 .setup-card img { width: 170px; height: 170px; padding: 10px; border-radius: 14px; background: #fff; }
 .inline-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .text-button { display: inline-flex; align-items: center; min-height: 40px; padding: 0 13px; border: 1px solid #64718a; border-radius: 10px; background: transparent; color: #fff; text-decoration: none; font-weight: 750; }
 
-.menu-manager { margin-top: 28px; padding: 24px; border: 1px solid #dfe4ee; border-radius: 20px; background: #fff; }
+.menu-manager { padding: 24px; border: 1px solid #dfe4ee; border-radius: 20px; background: #fff; }
 .menu-manager h2 { margin: 0; font-size: 1.65rem; }
 .menu-add-form { display: grid; grid-template-columns: 110px 1fr 150px auto; gap: 12px; align-items: end; margin-top: 20px; }
 .menu-add-form label { display: grid; gap: 7px; color: #4b596f; font-size: 0.85rem; font-weight: 750; }
@@ -179,6 +185,22 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .empty-state { padding: 70px 20px; border: 1px dashed #cbd2df; border-radius: 18px; color: #6e788a; text-align: center; background: rgba(255,255,255,0.5); }
 .empty-state strong { display: block; margin-bottom: 7px; color: #172238; font-size: 1.2rem; }
 
+.stats-panel { display: grid; gap: 20px; }
+.stats-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+.stats-heading h2 { margin: 0; font-size: 1.8rem; }
+.stats-heading > span { color: #687386; font-weight: 750; }
+.stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.stats-grid article { display: grid; gap: 10px; padding: 20px; border: 1px solid #dfe4ee; border-radius: 16px; background: #fff; }
+.stats-grid span { color: #687386; font-size: 0.875rem; font-weight: 750; }
+.stats-grid strong { font-size: 1.8rem; }
+.popular-card { padding: 24px; border: 1px solid #dfe4ee; border-radius: 20px; background: #fff; }
+.popular-card h3 { margin: 0 0 14px; font-size: 1.25rem; }
+.popular-card ol { display: grid; gap: 8px; margin: 0; padding-left: 28px; }
+.popular-card li { padding: 12px 14px; border-radius: 12px; background: #f5f7fb; }
+.popular-card li::marker { color: #e24e42; font-weight: 850; }
+.popular-card li span { margin-left: 4px; }
+.popular-card li strong { float: right; }
+
 @keyframes enter { from { opacity: 0; transform: translateY(8px); } }
 
 @media (max-width: 720px) {
@@ -187,6 +209,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
   .menu-grid { grid-template-columns: 1fr; }
   .menu-card { min-height: 150px; }
   .admin-heading { align-items: stretch; flex-direction: column; }
+  .admin-tabs { overflow-x: auto; }
+  .admin-tabs button { min-width: 96px; }
   .setup-card { grid-template-columns: 1fr; }
   .setup-card img { width: min(100%, 240px); height: auto; justify-self: center; }
   .menu-add-form, .admin-menu-item { grid-template-columns: 1fr; }
@@ -194,6 +218,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
   .order-card { grid-template-columns: 1fr; gap: 13px; }
   .order-actions { justify-content: stretch; }
   .order-actions button { flex: 1; }
+  .stats-heading { align-items: start; flex-direction: column; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
