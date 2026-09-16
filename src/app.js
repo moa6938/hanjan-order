@@ -46,24 +46,12 @@ function readableError(error) {
   return "연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.";
 }
 
-function connectEvents(onEvent) {
-  return supabase
-    .channel(`orders-${crypto.randomUUID()}`)
-    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
-      const order = payload.new;
-      if (order?.id) onEvent({ type: payload.eventType === "INSERT" ? "order-created" : "order-updated", order });
-    })
-    .subscribe((status) => setConnectionStatus(status === "SUBSCRIBED"));
-}
-
 if (isAdmin) setupAdminView();
 else setupOrderView();
 
 async function createOrder(items, note) {
   const { data, error } = await supabase
-    .from("orders")
-    .insert({ items, note: String(note || "").trim().slice(0, 80) })
-    .select()
+    .rpc("create_order", { order_items: items, order_note: String(note || "").trim().slice(0, 80) })
     .single();
   if (error) throw error;
   return data;
@@ -75,6 +63,18 @@ async function setupOrderView() {
   const template = document.querySelector("#menu-template");
   const error = document.querySelector("#order-error");
   const quantities = new Map();
+  let pollingTimer;
+
+  function startOrderPolling(orderId) {
+    clearInterval(pollingTimer);
+    const refresh = async () => {
+      const { data: order, error: requestError } = await supabase.rpc("get_order", { order_id: orderId }).maybeSingle();
+      setConnectionStatus(!requestError);
+      if (order) showTicket(order);
+    };
+    refresh();
+    pollingTimer = setInterval(refresh, 2500);
+  }
 
   MENU.forEach((item) => {
     quantities.set(item.id, 0);
@@ -112,6 +112,7 @@ async function setupOrderView() {
       const order = await createOrder(items, document.querySelector("#order-note").value);
       sessionStorage.setItem("activeOrderId", order.id);
       showTicket(order);
+      startOrderPolling(order.id);
       form.hidden = true;
     } catch (requestError) {
       error.textContent = readableError(requestError);
@@ -127,18 +128,16 @@ async function setupOrderView() {
 
   const activeOrderId = sessionStorage.getItem("activeOrderId");
   if (activeOrderId) {
-    const { data: order } = await supabase.from("orders").select().eq("id", activeOrderId).maybeSingle();
+    const { data: order } = await supabase.rpc("get_order", { order_id: activeOrderId }).maybeSingle();
     if (order) {
       showTicket(order);
+      startOrderPolling(order.id);
       form.hidden = true;
     } else {
       sessionStorage.removeItem("activeOrderId");
     }
   }
 
-  connectEvents((event) => {
-    if (event.order.id === sessionStorage.getItem("activeOrderId")) showTicket(event.order);
-  });
 }
 
 function showTicket(order) {
@@ -158,11 +157,18 @@ function showTicket(order) {
 }
 
 async function setupAdminView() {
+  const login = document.querySelector("#admin-login");
+  const pinInput = document.querySelector("#admin-pin");
+  const loginError = document.querySelector("#admin-login-error");
+  const dashboard = document.querySelector("#admin-dashboard");
   const list = document.querySelector("#order-list");
   const audioButton = document.querySelector("#audio-button");
   const orders = new Map();
+  const knownOrderIds = new Set();
   let audioContext;
   let audioEnabled = false;
+  let adminPin = "";
+  let hasLoaded = false;
 
   function chime() {
     if (!audioEnabled || !audioContext) return;
@@ -191,87 +197,88 @@ async function setupAdminView() {
     chime();
   });
 
-  function upsert(order) {
-    orders.set(order.id, order);
-    render();
-  }
-
   function render() {
-    const sorted = [...orders.values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     list.replaceChildren();
-    if (!sorted.length) {
+    if (!orders.size) {
       const empty = document.createElement("div");
+      const title = document.createElement("strong");
       empty.className = "empty-state";
-      empty.innerHTML = "<strong>아직 들어온 주문이 없어요.</strong>새 주문이 오면 이곳에 바로 표시됩니다.";
+      title.textContent = "아직 들어온 주문이 없어요.";
+      empty.append(title, "새 주문이 오면 이곳에 바로 표시됩니다.");
       list.append(empty);
       return;
     }
 
-    sorted.forEach((order) => {
-      const card = document.createElement("article");
-      card.className = `order-card is-${order.status}`;
+    [...orders.values()]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .forEach((order) => {
+        const card = document.createElement("article");
+        card.className = `order-card is-${order.status}`;
 
-      const number = document.createElement("div");
-      number.className = "order-number";
-      const strong = document.createElement("strong");
-      const time = document.createElement("time");
-      strong.textContent = displayId(order);
-      time.textContent = formatTime(order.created_at);
-      number.append(strong, time);
+        const number = document.createElement("div");
+        number.className = "order-number";
+        const strong = document.createElement("strong");
+        const time = document.createElement("time");
+        strong.textContent = displayId(order);
+        time.textContent = formatTime(order.created_at);
+        number.append(strong, time);
 
-      const detail = document.createElement("div");
-      detail.className = "order-detail";
-      const items = document.createElement("p");
-      const note = document.createElement("small");
-      items.textContent = formatItems(order.items);
-      note.textContent = order.note ? `요청: ${order.note}` : statusLabels[order.status];
-      detail.append(items, note);
+        const detail = document.createElement("div");
+        detail.className = "order-detail";
+        const items = document.createElement("p");
+        const note = document.createElement("small");
+        items.textContent = formatItems(order.items);
+        note.textContent = order.note ? `요청: ${order.note}` : statusLabels[order.status];
+        detail.append(items, note);
 
-      const actions = document.createElement("div");
-      actions.className = "order-actions";
-      if (order.status === "new") actions.append(statusButton("제조 시작", "making", true));
-      if (order.status === "making") actions.append(statusButton("완료", "done", true));
-      if (!["done", "canceled"].includes(order.status)) actions.append(statusButton("취소", "canceled"));
+        const actions = document.createElement("div");
+        actions.className = "order-actions";
+        if (order.status === "new") actions.append(statusButton("제조 시작", "making", true));
+        if (order.status === "making") actions.append(statusButton("완료", "done", true));
+        if (!["done", "canceled"].includes(order.status)) actions.append(statusButton("취소", "canceled"));
 
-      function statusButton(label, status, emphasized = false) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.textContent = label;
-        if (emphasized) button.className = "complete";
-        button.addEventListener("click", async () => {
-          button.disabled = true;
-          const { data, error } = await supabase
-            .from("orders")
-            .update({ status, updated_at: new Date().toISOString() })
-            .eq("id", order.id)
-            .select()
-            .single();
-          if (error) {
-            alert(readableError(error));
-            button.disabled = false;
-          } else {
-            upsert(data);
-          }
-        });
-        return button;
-      }
+        function statusButton(label, status, emphasized = false) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          if (emphasized) button.className = "complete";
+          button.addEventListener("click", async () => {
+            button.disabled = true;
+            const { data, error } = await supabase
+              .rpc("admin_update_order", { pin: adminPin, order_id: order.id, next_status: status })
+              .single();
+            if (error) {
+              alert(readableError(error));
+              button.disabled = false;
+            } else {
+              orders.set(data.id, data);
+              render();
+            }
+          });
+          return button;
+        }
 
-      card.append(number, detail, actions);
-      list.append(card);
-    });
+        card.append(number, detail, actions);
+        list.append(card);
+      });
   }
 
-  connectEvents((event) => {
-    upsert(event.order);
-    if (event.type === "order-created") chime();
-  });
-
-  try {
-    const { data, error } = await supabase.from("orders").select().order("created_at", { ascending: false }).limit(200);
+  async function refreshOrders() {
+    const { data, error } = await supabase.rpc("admin_list_orders", { pin: adminPin });
     if (error) throw error;
-    data.forEach((order) => orders.set(order.id, order));
+    const newOrderArrived = hasLoaded && data.some((order) => !knownOrderIds.has(order.id));
+    orders.clear();
+    data.forEach((order) => {
+      orders.set(order.id, order);
+      knownOrderIds.add(order.id);
+    });
     render();
+    setConnectionStatus(true);
+    if (newOrderArrived) chime();
+    hasLoaded = true;
+  }
 
+  async function startDashboard() {
     const orderUrl = `${location.origin}${location.pathname}#order`;
     document.querySelector("#order-url").textContent = orderUrl;
     const qrUrl = await QRCode.toDataURL(orderUrl, { width: 360, margin: 2, errorCorrectionLevel: "M" });
@@ -281,11 +288,34 @@ async function setupAdminView() {
       await navigator.clipboard.writeText(orderUrl);
       event.currentTarget.textContent = "복사됨";
     });
-  } catch (error) {
-    list.replaceChildren();
-    const empty = document.createElement("div");
-    empty.className = "empty-state";
-    empty.innerHTML = `<strong>연결하지 못했습니다.</strong>${readableError(error)}`;
-    list.append(empty);
+
+    await refreshOrders();
+    setInterval(() => refreshOrders().catch(() => setConnectionStatus(false)), 2500);
   }
+
+  login.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    loginError.textContent = "";
+    const candidate = pinInput.value;
+    const submit = login.querySelector("button[type=submit]");
+    submit.disabled = true;
+    try {
+      const { data: accepted, error } = await supabase.rpc("admin_check_pin", { pin: candidate });
+      if (error) throw error;
+      if (!accepted) {
+        loginError.textContent = "비밀번호가 올바르지 않습니다.";
+        pinInput.select();
+        return;
+      }
+      adminPin = candidate;
+      pinInput.value = "";
+      login.hidden = true;
+      dashboard.hidden = false;
+      await startDashboard();
+    } catch (error) {
+      loginError.textContent = readableError(error);
+    } finally {
+      submit.disabled = false;
+    }
+  });
 }
