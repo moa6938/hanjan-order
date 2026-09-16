@@ -48,7 +48,8 @@ assert.equal(readActiveOrder(storage), null);
 
 console.log("order storage test passed");
 
-assert.equal(orderLookupCode({ id: "2bef99b8-e3a4-4034-b5c1-f4cce74bee07" }), "2BEF99B8");
+assert.equal(orderLookupCode({ order_number: 26 }), "026");
+assert.equal(orderLookupCode({ order_number: 1026 }), "026");
 assert.equal(orderLookupCode(null), "");
 
 console.log("order lookup code test passed");

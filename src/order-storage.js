@@ -2,7 +2,7 @@ export const activeOrderKey = "activeOrderId";
 const activeOrderSnapshotKey = "activeOrderSnapshot";
 
 export function orderLookupCode(order) {
-  return String(order?.id || "").replaceAll("-", "").slice(0, 8).toUpperCase();
+  return order?.order_number == null ? "" : String(order.order_number % 1000).padStart(3, "0");
 }
 
 export function saveActiveOrder(storage, order) {

@@ -53,7 +53,7 @@
           </div>
           <label class="note-field">
             <span>주문 확인코드</span>
-            <input id="order-lookup-code" maxlength="8" pattern="[A-Fa-f0-9]{8}" placeholder="예: 2BEF99B8" autocomplete="off" autocapitalize="characters" required />
+            <input id="order-lookup-code" maxlength="3" pattern="[0-9]{3}" inputmode="numeric" placeholder="예: 026" autocomplete="off" required />
           </label>
           <button class="secondary-button" type="submit">내 주문 찾기</button>
           <p id="order-lookup-error" class="error-message" role="alert"></p>

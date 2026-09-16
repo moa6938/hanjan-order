@@ -216,9 +216,9 @@ security definer
 set search_path = ''
 as $$
   select * from public.orders
-  where trim(order_code) ~* '^[0-9a-f]{8}$'
-    and order_day >= ((now() at time zone 'Asia/Seoul')::date - 7)
-    and upper(substr(replace(id::text, '-', ''), 1, 8)) = upper(trim(order_code))
+  where trim(order_code) ~ '^[0-9]{3}$'
+    and order_day = (now() at time zone 'Asia/Seoul')::date
+    and lpad((order_number % 1000)::text, 3, '0') = trim(order_code)
   order by created_at desc
   limit 1;
 $$;
