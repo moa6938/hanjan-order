@@ -100,6 +100,7 @@ async function setupOrderView() {
   const form = document.querySelector("#order-form");
   const nameInput = document.querySelector("#customer-name");
   const menuList = document.querySelector("#menu-list");
+  const categoryTabs = [...document.querySelectorAll("[data-menu-category]")];
   const template = document.querySelector("#menu-template");
   const error = document.querySelector("#order-error");
   const quantityError = document.querySelector("#quantity-error");
@@ -109,6 +110,15 @@ async function setupOrderView() {
   let pollingTimer;
   let currentOrder;
   let submitting = false;
+  let activeCategory = menuCategories[0];
+
+  categoryTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      activeCategory = tab.dataset.menuCategory;
+      categoryTabs.forEach((item) => item.setAttribute("aria-pressed", String(item === tab)));
+      renderMenu();
+    });
+  });
 
   function updateSubmitState() {
     const total = [...quantities.values()].reduce((sum, quantity) => sum + quantity, 0);
@@ -119,6 +129,30 @@ async function setupOrderView() {
     submit.disabled = submitting || locked || tooMany;
     submit.textContent = locked ? "오늘 주문 완료" : tooMany ? "인원수 확인 필요" : submitting ? "주문 처리 중…" : "주문 보내기";
     quantityError.textContent = tooMany ? "인당 음료는 하나만 주문할 수 있습니다." : "";
+    renderSelectionSummary(total);
+  }
+
+  function renderSelectionSummary(total) {
+    const list = document.querySelector("#selection-list");
+    const selected = [...quantities].filter(([, quantity]) => quantity > 0);
+    document.querySelector("#selection-total").textContent = `총 ${total}잔`;
+    list.replaceChildren();
+    if (!selected.length) {
+      const empty = document.createElement("li");
+      empty.className = "is-empty";
+      empty.textContent = "아직 담은 음료가 없어요.";
+      list.append(empty);
+      return;
+    }
+    selected.forEach(([id, quantity]) => {
+      const item = document.createElement("li");
+      const name = document.createElement("span");
+      const count = document.createElement("strong");
+      name.textContent = menu.find((menuItem) => menuItem.id === id)?.name || "메뉴";
+      count.textContent = `${quantity}잔`;
+      item.append(name, count);
+      list.append(item);
+    });
   }
 
   function updateOrderAccess(order) {
@@ -166,18 +200,14 @@ async function setupOrderView() {
     const currentIds = new Set(menu.map((item) => item.id));
     [...quantities.keys()].filter((id) => !currentIds.has(id)).forEach((id) => quantities.delete(id));
     menuList.replaceChildren();
-
-    menuCategories.forEach((category) => {
-      const categoryItems = menu.filter((item) => item.category === category);
-      if (!categoryItems.length) return;
-      const section = document.createElement("section");
-      const title = document.createElement("h2");
-      const grid = document.createElement("div");
-      title.className = "menu-section-title";
-      title.textContent = category;
-      grid.className = "menu-grid";
-
-      categoryItems.forEach((item) => {
+    categoryTabs.forEach((tab) => {
+      const count = menu.filter((item) => item.category === tab.dataset.menuCategory).length;
+      tab.textContent = `${tab.dataset.menuCategory} ${count}`;
+      tab.disabled = count === 0;
+    });
+    const grid = document.createElement("div");
+    grid.className = "menu-grid";
+    menu.filter((item) => item.category === activeCategory).forEach((item) => {
         if (!quantities.has(item.id)) quantities.set(item.id, 0);
         if (!item.is_available) quantities.set(item.id, 0);
         const card = template.content.firstElementChild.cloneNode(true);
@@ -201,10 +231,8 @@ async function setupOrderView() {
           updateSubmitState();
         });
         grid.append(card);
-      });
-      section.append(title, grid);
-      menuList.append(section);
     });
+    menuList.append(grid);
     updateSubmitState();
   }
 

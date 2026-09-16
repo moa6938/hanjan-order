@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#172238" />
     <meta name="description" content="2층 음료 주문과 1층 제조 접수를 연결하는 간단한 주문 화면" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css?v=order-check-1" />
+    <link rel="stylesheet" href="/styles.css?v=menu-tabs-1" />
     <title>한 잔 주문</title>
   </head>
   <body>
@@ -51,6 +51,10 @@
             <strong id="order-summary-text"></strong>
             <button id="edit-order-info" type="button">정보 수정</button>
           </div>
+          <div id="menu-category-tabs" class="menu-category-tabs" aria-label="음료 분류">
+            <button type="button" data-menu-category="ADE" aria-pressed="true">ADE</button>
+            <button type="button" data-menu-category="NON SODA" aria-pressed="false">NON SODA</button>
+          </div>
           <div id="menu-list" class="menu-sections" aria-live="polite"></div>
           <p id="quantity-error" class="error-message" role="status"></p>
           <label class="note-field">
@@ -58,6 +62,15 @@
             <input id="order-note" maxlength="80" placeholder="예: 얼음 조금만" autocomplete="off" />
           </label>
           <button class="primary-button" type="submit">주문 보내기</button>
+          <section class="selection-summary" aria-live="polite">
+            <div>
+              <strong>담은 음료</strong>
+              <span id="selection-total">총 0잔</span>
+            </div>
+            <ul id="selection-list">
+              <li class="is-empty">아직 담은 음료가 없어요.</li>
+            </ul>
+          </section>
           <p id="order-error" class="error-message" role="alert"></p>
         </form>
 
