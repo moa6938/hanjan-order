@@ -36,19 +36,28 @@ create table if not exists public.menu_items (
   id text primary key default gen_random_uuid()::text,
   name text not null check (char_length(trim(name)) between 1 and 30),
   icon text not null default '🥤' check (char_length(trim(icon)) between 1 and 12),
+  category text not null default 'NON SODA' check (category in ('ADE', 'NON SODA')),
   is_available boolean not null default true,
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
 
+alter table public.menu_items
+  add column if not exists category text not null default 'NON SODA'
+  check (category in ('ADE', 'NON SODA'));
+
 create unique index if not exists menu_items_name_key on public.menu_items (lower(name));
 
-insert into public.menu_items (id, name, icon, sort_order)
+insert into public.menu_items (id, name, icon, category, sort_order)
 values
-  ('iced-tea', '아이스티', '🧊', 1),
-  ('lemonade', '레모네이드', '🍋', 2),
-  ('ade', '오늘의 에이드', '🥤', 3)
+  ('iced-tea', '아이스티', '🧊', 'NON SODA', 1),
+  ('lemonade', '레모네이드', '🍋', 'ADE', 2),
+  ('ade', '오늘의 에이드', '🥤', 'ADE', 3)
 on conflict (id) do nothing;
+
+update public.menu_items
+set category = 'ADE'
+where id in ('lemonade', 'ade') or name ilike 'ADE)%' or upper(icon) = 'ADE';
 
 alter table public.orders enable row level security;
 alter table public.menu_items enable row level security;
@@ -236,6 +245,64 @@ begin
 end;
 $$;
 
+create or replace function public.admin_add_menu(pin text, item_name text, item_icon text, item_category text)
+returns public.menu_items
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  created public.menu_items;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+  if char_length(trim(coalesce(item_name, ''))) not between 1 and 30 then
+    raise exception 'menu name must contain 1 to 30 characters' using errcode = '22023';
+  end if;
+  if char_length(trim(coalesce(item_icon, ''))) not between 1 and 12 then
+    raise exception 'menu icon must contain 1 to 12 characters' using errcode = '22023';
+  end if;
+  if item_category not in ('ADE', 'NON SODA') then
+    raise exception 'invalid menu category' using errcode = '22023';
+  end if;
+
+  insert into public.menu_items (name, icon, category, sort_order)
+  values (
+    trim(item_name),
+    trim(item_icon),
+    item_category,
+    coalesce((select max(sort_order) + 1 from public.menu_items), 1)
+  )
+  returning * into created;
+  return created;
+end;
+$$;
+
+create or replace function public.admin_rename_menu(pin text, menu_id text, item_name text)
+returns public.menu_items
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  updated public.menu_items;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+  if char_length(trim(coalesce(item_name, ''))) not between 1 and 30 then
+    raise exception 'menu name must contain 1 to 30 characters' using errcode = '22023';
+  end if;
+
+  update public.menu_items
+  set name = trim(item_name)
+  where id = menu_id
+  returning * into updated;
+  return updated;
+end;
+$$;
+
 create or replace function public.admin_set_menu_available(pin text, menu_id text, available boolean)
 returns public.menu_items
 language plpgsql
@@ -283,6 +350,8 @@ revoke all on function public.admin_check_pin(text) from public;
 revoke all on function public.admin_list_orders(text) from public;
 revoke all on function public.admin_update_order(text, uuid, text) from public;
 revoke all on function public.admin_add_menu(text, text, text) from public;
+revoke all on function public.admin_add_menu(text, text, text, text) from public;
+revoke all on function public.admin_rename_menu(text, text, text) from public;
 revoke all on function public.admin_set_menu_available(text, text, boolean) from public;
 revoke all on function public.admin_remove_menu(text, text) from public;
 
@@ -293,6 +362,8 @@ grant execute on function public.admin_check_pin(text) to anon, authenticated;
 grant execute on function public.admin_list_orders(text) to anon, authenticated;
 grant execute on function public.admin_update_order(text, uuid, text) to anon, authenticated;
 grant execute on function public.admin_add_menu(text, text, text) to anon, authenticated;
+grant execute on function public.admin_add_menu(text, text, text, text) to anon, authenticated;
+grant execute on function public.admin_rename_menu(text, text, text) to anon, authenticated;
 grant execute on function public.admin_set_menu_available(text, text, boolean) to anon, authenticated;
 grant execute on function public.admin_remove_menu(text, text) to anon, authenticated;
 

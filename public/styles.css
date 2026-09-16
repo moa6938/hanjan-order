@@ -17,7 +17,7 @@ body {
     #f5f7fb;
 }
 
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 
@@ -74,6 +74,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .intro > p:last-child { margin: 18px 0 0; color: #5d687b; font-size: 1rem; line-height: 1.65; }
 
 .order-form { margin-top: 38px; }
+.menu-sections { display: grid; gap: 32px; }
+.menu-section-title { margin: 0 0 12px; color: #4b596f; font-size: 1rem; letter-spacing: 0.08em; }
 .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .menu-card {
   min-height: 190px;
@@ -143,14 +145,17 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 
 .menu-manager { margin-top: 28px; padding: 24px; border: 1px solid #dfe4ee; border-radius: 20px; background: #fff; }
 .menu-manager h2 { margin: 0; font-size: 1.65rem; }
-.menu-add-form { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; align-items: end; margin-top: 20px; }
+.menu-add-form { display: grid; grid-template-columns: 110px 1fr 150px auto; gap: 12px; align-items: end; margin-top: 20px; }
 .menu-add-form label { display: grid; gap: 7px; color: #4b596f; font-size: 0.85rem; font-weight: 750; }
-.menu-add-form input { min-height: 48px; padding: 0 14px; border: 1px solid #d4dae5; border-radius: 12px; background: #fff; color: inherit; }
+.menu-add-form input, .menu-add-form select, .admin-menu-name input { min-height: 48px; padding: 0 14px; border: 1px solid #d4dae5; border-radius: 12px; background: #fff; color: inherit; }
 .menu-add-form .secondary-button { min-height: 48px; }
 .admin-menu-list { display: grid; gap: 10px; margin-top: 10px; }
+.admin-menu-group { display: grid; gap: 10px; margin-top: 14px; }
+.admin-menu-group h3 { margin: 0; color: #4b596f; font-size: 0.9rem; letter-spacing: 0.08em; }
 .admin-menu-item { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 15px 16px; border: 1px solid #e2e6ee; border-radius: 14px; }
 .admin-menu-name { display: flex; align-items: center; gap: 12px; font-weight: 800; }
 .admin-menu-name span:first-child { font-size: 1.5rem; }
+.admin-menu-name input { width: min(100%, 300px); }
 .admin-menu-name small { color: #7b8493; font-weight: 700; }
 .admin-menu-actions { display: flex; gap: 8px; }
 .admin-menu-actions button { min-height: 40px; padding: 0 13px; border: 1px solid #d3d9e4; border-radius: 10px; background: #f5f7fb; color: #172238; font-weight: 800; }

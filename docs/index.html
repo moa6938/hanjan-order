@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
     <title>한 잔 주문</title>
-    <script type="module" crossorigin src="./assets/index-DMk212_g.js"></script>
+    <script type="module" crossorigin src="./assets/index-BKmytava.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -28,7 +28,7 @@
         </div>
 
         <form id="order-form" class="order-form">
-          <div id="menu-list" class="menu-grid" aria-live="polite"></div>
+          <div id="menu-list" class="menu-sections" aria-live="polite"></div>
           <label class="note-field">
             <span>요청사항 <small>선택</small></span>
             <input id="order-note" maxlength="80" placeholder="예: 얼음 조금만" autocomplete="off" />
@@ -96,6 +96,13 @@
               <label>
                 <span>메뉴 이름</span>
                 <input id="menu-name" maxlength="30" placeholder="예: 복숭아 아이스티" required />
+              </label>
+              <label>
+                <span>분류</span>
+                <select id="menu-category">
+                  <option value="ADE">ADE</option>
+                  <option value="NON SODA">NON SODA</option>
+                </select>
               </label>
               <button class="secondary-button" type="submit">메뉴 추가</button>
             </form>

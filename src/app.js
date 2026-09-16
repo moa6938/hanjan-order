@@ -8,6 +8,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 const statusLabels = { new: "접수 대기", making: "제조 중", done: "완료", canceled: "취소됨" };
+const menuCategories = ["ADE", "NON SODA"];
 const orderView = document.querySelector("#order-view");
 const adminView = document.querySelector("#admin-view");
 const isAdmin = location.hash === "#admin" || location.pathname === "/admin";
@@ -83,29 +84,42 @@ async function setupOrderView() {
     [...quantities.keys()].filter((id) => !currentIds.has(id)).forEach((id) => quantities.delete(id));
     menuList.replaceChildren();
 
-    menu.forEach((item) => {
-      if (!quantities.has(item.id)) quantities.set(item.id, 0);
-      if (!item.is_available) quantities.set(item.id, 0);
-      const card = template.content.firstElementChild.cloneNode(true);
-      card.dataset.id = item.id;
-      card.classList.toggle("is-sold-out", !item.is_available);
-      card.querySelector("h2").textContent = item.name;
-      card.querySelector(".menu-icon").textContent = item.icon;
-      card.querySelector(".sold-out-label").hidden = item.is_available;
-      const output = card.querySelector("output");
-      output.value = quantities.get(item.id);
-      output.textContent = quantities.get(item.id);
-      card.querySelectorAll("button").forEach((button) => (button.disabled = !item.is_available));
-      card.addEventListener("click", (event) => {
-        const action = event.target.closest("button")?.dataset.action;
-        if (!action || !item.is_available) return;
-        const current = quantities.get(item.id);
-        const next = action === "plus" ? Math.min(current + 1, 9) : Math.max(current - 1, 0);
-        quantities.set(item.id, next);
-        output.value = next;
-        output.textContent = next;
+    menuCategories.forEach((category) => {
+      const categoryItems = menu.filter((item) => item.category === category);
+      if (!categoryItems.length) return;
+      const section = document.createElement("section");
+      const title = document.createElement("h2");
+      const grid = document.createElement("div");
+      title.className = "menu-section-title";
+      title.textContent = category;
+      grid.className = "menu-grid";
+
+      categoryItems.forEach((item) => {
+        if (!quantities.has(item.id)) quantities.set(item.id, 0);
+        if (!item.is_available) quantities.set(item.id, 0);
+        const card = template.content.firstElementChild.cloneNode(true);
+        card.dataset.id = item.id;
+        card.classList.toggle("is-sold-out", !item.is_available);
+        card.querySelector("h2").textContent = item.name;
+        card.querySelector(".menu-icon").textContent = item.icon;
+        card.querySelector(".sold-out-label").hidden = item.is_available;
+        const output = card.querySelector("output");
+        output.value = quantities.get(item.id);
+        output.textContent = quantities.get(item.id);
+        card.querySelectorAll("button").forEach((button) => (button.disabled = !item.is_available));
+        card.addEventListener("click", (event) => {
+          const action = event.target.closest("button")?.dataset.action;
+          if (!action || !item.is_available) return;
+          const current = quantities.get(item.id);
+          const next = action === "plus" ? Math.min(current + 1, 9) : Math.max(current - 1, 0);
+          quantities.set(item.id, next);
+          output.value = next;
+          output.textContent = next;
+        });
+        grid.append(card);
       });
-      menuList.append(card);
+      section.append(title, grid);
+      menuList.append(section);
     });
   }
 
@@ -232,53 +246,80 @@ async function setupAdminView() {
 
   function renderAdminMenu(items) {
     menuList.replaceChildren();
-    items.forEach((item) => {
-      const row = document.createElement("div");
-      row.className = "admin-menu-item";
+    menuCategories.forEach((category) => {
+      const group = document.createElement("section");
+      const heading = document.createElement("h3");
+      heading.textContent = category;
+      group.className = "admin-menu-group";
+      group.append(heading);
 
-      const name = document.createElement("div");
-      name.className = "admin-menu-name";
-      const icon = document.createElement("span");
-      const label = document.createElement("span");
-      const status = document.createElement("small");
-      icon.textContent = item.icon;
-      label.textContent = item.name;
-      status.textContent = item.is_available ? "판매 중" : "품절";
-      name.append(icon, label, status);
+      items.filter((item) => item.category === category).forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "admin-menu-item";
 
-      const actions = document.createElement("div");
-      actions.className = "admin-menu-actions";
-      const availability = document.createElement("button");
-      availability.type = "button";
-      availability.textContent = item.is_available ? "품절 처리" : "판매 재개";
-      availability.addEventListener("click", async () => {
-        availability.disabled = true;
-        const { error } = await supabase.rpc("admin_set_menu_available", {
-          pin: adminPin,
-          menu_id: item.id,
-          available: !item.is_available
+        const name = document.createElement("div");
+        name.className = "admin-menu-name";
+        const icon = document.createElement("span");
+        const input = document.createElement("input");
+        const status = document.createElement("small");
+        icon.textContent = item.icon;
+        input.value = item.name;
+        input.maxLength = 30;
+        input.setAttribute("aria-label", `${item.name} 이름`);
+        status.textContent = item.is_available ? "판매 중" : "품절";
+        name.append(icon, input, status);
+
+        const actions = document.createElement("div");
+        actions.className = "admin-menu-actions";
+        const rename = document.createElement("button");
+        rename.type = "button";
+        rename.textContent = "이름 저장";
+        rename.addEventListener("click", async () => {
+          const nextName = input.value.trim();
+          if (!nextName || nextName === item.name) return;
+          rename.disabled = true;
+          const { error } = await supabase.rpc("admin_rename_menu", {
+            pin: adminPin,
+            menu_id: item.id,
+            item_name: nextName
+          });
+          if (error) menuError.textContent = readableError(error);
+          else await refreshAdminMenu();
+          rename.disabled = false;
         });
-        if (error) menuError.textContent = readableError(error);
-        else await refreshAdminMenu();
-        availability.disabled = false;
-      });
+        const availability = document.createElement("button");
+        availability.type = "button";
+        availability.textContent = item.is_available ? "품절 처리" : "판매 재개";
+        availability.addEventListener("click", async () => {
+          availability.disabled = true;
+          const { error } = await supabase.rpc("admin_set_menu_available", {
+            pin: adminPin,
+            menu_id: item.id,
+            available: !item.is_available
+          });
+          if (error) menuError.textContent = readableError(error);
+          else await refreshAdminMenu();
+          availability.disabled = false;
+        });
 
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "danger";
-      remove.textContent = "삭제";
-      remove.addEventListener("click", async () => {
-        if (!confirm(`${item.name} 메뉴를 삭제할까요?`)) return;
-        remove.disabled = true;
-        const { error } = await supabase.rpc("admin_remove_menu", { pin: adminPin, menu_id: item.id });
-        if (error) menuError.textContent = readableError(error);
-        else await refreshAdminMenu();
-        remove.disabled = false;
-      });
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "danger";
+        remove.textContent = "삭제";
+        remove.addEventListener("click", async () => {
+          if (!confirm(`${item.name} 메뉴를 삭제할까요?`)) return;
+          remove.disabled = true;
+          const { error } = await supabase.rpc("admin_remove_menu", { pin: adminPin, menu_id: item.id });
+          if (error) menuError.textContent = readableError(error);
+          else await refreshAdminMenu();
+          remove.disabled = false;
+        });
 
-      actions.append(availability, remove);
-      row.append(name, actions);
-      menuList.append(row);
+        actions.append(rename, availability, remove);
+        row.append(name, actions);
+        group.append(row);
+      });
+      menuList.append(group);
     });
   }
 
@@ -296,7 +337,8 @@ async function setupAdminView() {
     const { error } = await supabase.rpc("admin_add_menu", {
       pin: adminPin,
       item_name: document.querySelector("#menu-name").value,
-      item_icon: document.querySelector("#menu-icon").value
+      item_icon: document.querySelector("#menu-icon").value,
+      item_category: document.querySelector("#menu-category").value
     });
     if (error) {
       menuError.textContent = readableError(error);
