@@ -6,14 +6,18 @@ set search_path = ''
 as $$
   select
     jsonb_typeof(value) = 'array'
-    and jsonb_array_length(value) between 1 and 3
+    and jsonb_array_length(value) between 1 and 20
     and not exists (
       select 1
       from jsonb_array_elements(value) as item
-      where item ->> 'id' not in ('iced-tea', 'lemonade', 'ade')
-        or item ->> 'name' not in ('아이스티', '레모네이드', '오늘의 에이드')
+      where coalesce(item ->> 'id', '') = ''
+        or coalesce(item ->> 'name', '') = ''
         or not (item ->> 'quantity' ~ '^[1-9]$')
-    );
+    )
+    and (
+      select count(distinct item ->> 'id')
+      from jsonb_array_elements(value) as item
+    ) = jsonb_array_length(value);
 $$;
 
 create table if not exists public.orders (
@@ -28,10 +32,30 @@ create table if not exists public.orders (
 
 create index if not exists orders_created_at_idx on public.orders (created_at desc);
 
+create table if not exists public.menu_items (
+  id text primary key default gen_random_uuid()::text,
+  name text not null check (char_length(trim(name)) between 1 and 30),
+  icon text not null default '🥤' check (char_length(trim(icon)) between 1 and 12),
+  is_available boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists menu_items_name_key on public.menu_items (lower(name));
+
+insert into public.menu_items (id, name, icon, sort_order)
+values
+  ('iced-tea', '아이스티', '🧊', 1),
+  ('lemonade', '레모네이드', '🍋', 2),
+  ('ade', '오늘의 에이드', '🥤', 3)
+on conflict (id) do nothing;
+
 alter table public.orders enable row level security;
+alter table public.menu_items enable row level security;
 
 revoke all on table public.orders from anon, authenticated;
 revoke all on sequence public.orders_order_number_seq from anon, authenticated;
+revoke all on table public.menu_items from anon, authenticated;
 
 drop policy if exists "orders are readable" on public.orders;
 drop policy if exists "orders can be created" on public.orders;
@@ -92,11 +116,35 @@ as $$
 declare
   created public.orders;
 begin
+  if not public.valid_drink_order_items(order_items) then
+    raise exception 'invalid order items' using errcode = '22023';
+  end if;
+  if exists (
+    select 1
+    from jsonb_array_elements(order_items) as item
+    left join public.menu_items as menu
+      on menu.id = item ->> 'id'
+      and menu.name = item ->> 'name'
+    where menu.id is null or not menu.is_available
+  ) then
+    raise exception 'menu item unavailable' using errcode = '22023';
+  end if;
+
   insert into public.orders (items, note)
   values (order_items, trim(left(coalesce(order_note, ''), 80)))
   returning * into created;
   return created;
 end;
+$$;
+
+create or replace function public.list_menu_items()
+returns setof public.menu_items
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.menu_items order by sort_order, created_at;
 $$;
 
 create or replace function public.get_order(order_id uuid)
@@ -158,17 +206,95 @@ begin
 end;
 $$;
 
+create or replace function public.admin_add_menu(pin text, item_name text, item_icon text default '🥤')
+returns public.menu_items
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  created public.menu_items;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+  if char_length(trim(coalesce(item_name, ''))) not between 1 and 30 then
+    raise exception 'menu name must contain 1 to 30 characters' using errcode = '22023';
+  end if;
+  if char_length(trim(coalesce(item_icon, ''))) not between 1 and 12 then
+    raise exception 'menu icon must contain 1 to 12 characters' using errcode = '22023';
+  end if;
+
+  insert into public.menu_items (name, icon, sort_order)
+  values (
+    trim(item_name),
+    trim(item_icon),
+    coalesce((select max(sort_order) + 1 from public.menu_items), 1)
+  )
+  returning * into created;
+  return created;
+end;
+$$;
+
+create or replace function public.admin_set_menu_available(pin text, menu_id text, available boolean)
+returns public.menu_items
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  updated public.menu_items;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+
+  update public.menu_items
+  set is_available = available
+  where id = menu_id
+  returning * into updated;
+  return updated;
+end;
+$$;
+
+create or replace function public.admin_remove_menu(pin text, menu_id text)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  removed_count integer;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+
+  delete from public.menu_items where id = menu_id;
+  get diagnostics removed_count = row_count;
+  return removed_count = 1;
+end;
+$$;
+
 revoke all on function public.create_order(jsonb, text) from public;
+revoke all on function public.list_menu_items() from public;
 revoke all on function public.get_order(uuid) from public;
 revoke all on function public.admin_check_pin(text) from public;
 revoke all on function public.admin_list_orders(text) from public;
 revoke all on function public.admin_update_order(text, uuid, text) from public;
+revoke all on function public.admin_add_menu(text, text, text) from public;
+revoke all on function public.admin_set_menu_available(text, text, boolean) from public;
+revoke all on function public.admin_remove_menu(text, text) from public;
 
 grant execute on function public.create_order(jsonb, text) to anon, authenticated;
+grant execute on function public.list_menu_items() to anon, authenticated;
 grant execute on function public.get_order(uuid) to anon, authenticated;
 grant execute on function public.admin_check_pin(text) to anon, authenticated;
 grant execute on function public.admin_list_orders(text) to anon, authenticated;
 grant execute on function public.admin_update_order(text, uuid, text) to anon, authenticated;
+grant execute on function public.admin_add_menu(text, text, text) to anon, authenticated;
+grant execute on function public.admin_set_menu_available(text, text, boolean) to anon, authenticated;
+grant execute on function public.admin_remove_menu(text, text) to anon, authenticated;
 
 -- Run this separately in the SQL Editor with the real PIN; do not commit it:
 -- select private.set_admin_pin('replace-with-your-pin');

@@ -7,11 +7,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
-const MENU = [
-  { id: "iced-tea", name: "아이스티", icon: "🧊" },
-  { id: "lemonade", name: "레모네이드", icon: "🍋" },
-  { id: "ade", name: "오늘의 에이드", icon: "🥤" }
-];
 const statusLabels = { new: "접수 대기", making: "제조 중", done: "완료", canceled: "취소됨" };
 const orderView = document.querySelector("#order-view");
 const adminView = document.querySelector("#admin-view");
@@ -43,6 +38,12 @@ function readableError(error) {
   if (error?.code === "42P01" || error?.message?.includes("schema cache")) {
     return "주문 저장소가 아직 준비되지 않았습니다.";
   }
+  if (error?.message?.includes("menu item unavailable")) {
+    return "선택한 메뉴가 품절되었거나 변경됐습니다. 다시 선택해 주세요.";
+  }
+  if (error?.code === "23505") {
+    return "같은 이름의 메뉴가 이미 있습니다.";
+  }
   return "연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.";
 }
 
@@ -63,6 +64,7 @@ async function setupOrderView() {
   const template = document.querySelector("#menu-template");
   const error = document.querySelector("#order-error");
   const quantities = new Map();
+  let menu = [];
   let pollingTimer;
 
   function startOrderPolling(orderId) {
@@ -76,31 +78,59 @@ async function setupOrderView() {
     pollingTimer = setInterval(refresh, 2500);
   }
 
-  MENU.forEach((item) => {
-    quantities.set(item.id, 0);
-    const card = template.content.firstElementChild.cloneNode(true);
-    card.dataset.id = item.id;
-    card.querySelector("h2").textContent = item.name;
-    card.querySelector(".menu-icon").textContent = item.icon;
-    const output = card.querySelector("output");
-    card.addEventListener("click", (event) => {
-      const action = event.target.closest("button")?.dataset.action;
-      if (!action) return;
-      const current = quantities.get(item.id);
-      const next = action === "plus" ? Math.min(current + 1, 9) : Math.max(current - 1, 0);
-      quantities.set(item.id, next);
-      output.value = next;
-      output.textContent = next;
+  function renderMenu() {
+    const currentIds = new Set(menu.map((item) => item.id));
+    [...quantities.keys()].filter((id) => !currentIds.has(id)).forEach((id) => quantities.delete(id));
+    menuList.replaceChildren();
+
+    menu.forEach((item) => {
+      if (!quantities.has(item.id)) quantities.set(item.id, 0);
+      if (!item.is_available) quantities.set(item.id, 0);
+      const card = template.content.firstElementChild.cloneNode(true);
+      card.dataset.id = item.id;
+      card.classList.toggle("is-sold-out", !item.is_available);
+      card.querySelector("h2").textContent = item.name;
+      card.querySelector(".menu-icon").textContent = item.icon;
+      card.querySelector(".sold-out-label").hidden = item.is_available;
+      const output = card.querySelector("output");
+      output.value = quantities.get(item.id);
+      output.textContent = quantities.get(item.id);
+      card.querySelectorAll("button").forEach((button) => (button.disabled = !item.is_available));
+      card.addEventListener("click", (event) => {
+        const action = event.target.closest("button")?.dataset.action;
+        if (!action || !item.is_available) return;
+        const current = quantities.get(item.id);
+        const next = action === "plus" ? Math.min(current + 1, 9) : Math.max(current - 1, 0);
+        quantities.set(item.id, next);
+        output.value = next;
+        output.textContent = next;
+      });
+      menuList.append(card);
     });
-    menuList.append(card);
-  });
+  }
+
+  async function refreshMenu() {
+    const { data, error: requestError } = await supabase.rpc("list_menu_items");
+    if (requestError) throw requestError;
+    menu = data;
+    renderMenu();
+    setConnectionStatus(true);
+  }
+
+  try {
+    await refreshMenu();
+    setInterval(() => refreshMenu().catch(() => setConnectionStatus(false)), 5000);
+  } catch (requestError) {
+    error.textContent = readableError(requestError);
+    setConnectionStatus(false);
+  }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.textContent = "";
     const items = [...quantities]
       .filter(([, quantity]) => quantity > 0)
-      .map(([id, quantity]) => ({ id, name: MENU.find((item) => item.id === id).name, quantity }));
+      .map(([id, quantity]) => ({ id, name: menu.find((item) => item.id === id).name, quantity }));
     if (!items.length) {
       error.textContent = "음료를 한 개 이상 선택해 주세요.";
       return;
@@ -163,6 +193,9 @@ async function setupAdminView() {
   const dashboard = document.querySelector("#admin-dashboard");
   const list = document.querySelector("#order-list");
   const audioButton = document.querySelector("#audio-button");
+  const menuForm = document.querySelector("#menu-add-form");
+  const menuList = document.querySelector("#admin-menu-list");
+  const menuError = document.querySelector("#menu-error");
   const orders = new Map();
   const knownOrderIds = new Set();
   let audioContext;
@@ -195,6 +228,83 @@ async function setupAdminView() {
     audioButton.textContent = "🔔 알림 켜짐";
     audioButton.classList.add("is-on");
     chime();
+  });
+
+  function renderAdminMenu(items) {
+    menuList.replaceChildren();
+    items.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "admin-menu-item";
+
+      const name = document.createElement("div");
+      name.className = "admin-menu-name";
+      const icon = document.createElement("span");
+      const label = document.createElement("span");
+      const status = document.createElement("small");
+      icon.textContent = item.icon;
+      label.textContent = item.name;
+      status.textContent = item.is_available ? "판매 중" : "품절";
+      name.append(icon, label, status);
+
+      const actions = document.createElement("div");
+      actions.className = "admin-menu-actions";
+      const availability = document.createElement("button");
+      availability.type = "button";
+      availability.textContent = item.is_available ? "품절 처리" : "판매 재개";
+      availability.addEventListener("click", async () => {
+        availability.disabled = true;
+        const { error } = await supabase.rpc("admin_set_menu_available", {
+          pin: adminPin,
+          menu_id: item.id,
+          available: !item.is_available
+        });
+        if (error) menuError.textContent = readableError(error);
+        else await refreshAdminMenu();
+        availability.disabled = false;
+      });
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "danger";
+      remove.textContent = "삭제";
+      remove.addEventListener("click", async () => {
+        if (!confirm(`${item.name} 메뉴를 삭제할까요?`)) return;
+        remove.disabled = true;
+        const { error } = await supabase.rpc("admin_remove_menu", { pin: adminPin, menu_id: item.id });
+        if (error) menuError.textContent = readableError(error);
+        else await refreshAdminMenu();
+        remove.disabled = false;
+      });
+
+      actions.append(availability, remove);
+      row.append(name, actions);
+      menuList.append(row);
+    });
+  }
+
+  async function refreshAdminMenu() {
+    const { data, error } = await supabase.rpc("list_menu_items");
+    if (error) throw error;
+    renderAdminMenu(data);
+  }
+
+  menuForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    menuError.textContent = "";
+    const submit = menuForm.querySelector("button[type=submit]");
+    submit.disabled = true;
+    const { error } = await supabase.rpc("admin_add_menu", {
+      pin: adminPin,
+      item_name: document.querySelector("#menu-name").value,
+      item_icon: document.querySelector("#menu-icon").value
+    });
+    if (error) {
+      menuError.textContent = readableError(error);
+    } else {
+      document.querySelector("#menu-name").value = "";
+      await refreshAdminMenu();
+    }
+    submit.disabled = false;
   });
 
   function render() {
@@ -289,8 +399,9 @@ async function setupAdminView() {
       event.currentTarget.textContent = "복사됨";
     });
 
-    await refreshOrders();
+    await Promise.all([refreshOrders(), refreshAdminMenu()]);
     setInterval(() => refreshOrders().catch(() => setConnectionStatus(false)), 2500);
+    setInterval(() => refreshAdminMenu().catch(() => setConnectionStatus(false)), 5000);
   }
 
   login.addEventListener("submit", async (event) => {

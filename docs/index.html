@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
     <title>한 잔 주문</title>
-    <script type="module" crossorigin src="./assets/index-Dside-Ft.js"></script>
+    <script type="module" crossorigin src="./assets/index-DMk212_g.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -83,6 +83,26 @@
             <img id="qr-image" alt="2층 주문 페이지 QR 코드" />
           </aside>
 
+          <section class="menu-manager" aria-labelledby="menu-manager-title">
+            <div>
+              <p class="eyebrow">판매 설정</p>
+              <h2 id="menu-manager-title">메뉴 관리</h2>
+            </div>
+            <form id="menu-add-form" class="menu-add-form">
+              <label>
+                <span>아이콘</span>
+                <input id="menu-icon" maxlength="12" value="🥤" required />
+              </label>
+              <label>
+                <span>메뉴 이름</span>
+                <input id="menu-name" maxlength="30" placeholder="예: 복숭아 아이스티" required />
+              </label>
+              <button class="secondary-button" type="submit">메뉴 추가</button>
+            </form>
+            <p id="menu-error" class="error-message" role="alert"></p>
+            <div id="admin-menu-list" class="admin-menu-list"></div>
+          </section>
+
           <div id="order-list" class="order-list" aria-live="polite"></div>
         </div>
       </section>
@@ -93,6 +113,7 @@
         <div>
           <span class="menu-icon" aria-hidden="true">🥤</span>
           <h2></h2>
+          <span class="sold-out-label" hidden>품절</span>
         </div>
         <div class="quantity-control" aria-label="수량 선택">
           <button type="button" data-action="minus" aria-label="수량 줄이기">−</button>
