@@ -26,11 +26,10 @@ const csv = ordersToCsv([{
   customer_name: "=테스트",
   party_size: 3,
   items: [{ name: "망고, 에이드", quantity: 2 }, { name: "자몽", quantity: 1 }],
-  note: "얼음 \"조금\"",
   status: "done"
 }]);
 
-assert.equal(csv, '"주문번호","주문일시","주문자","인원수","주문메뉴","요청사항","상태"\r\n"A026","2026-09-16 17:30","\'=테스트","3명","망고, 에이드 2잔 / 자몽 1잔","얼음 ""조금""","완료"');
+assert.equal(csv, '"주문번호","주문일시","주문자","인원수","주문메뉴","상태"\r\n"A026","2026-09-16 17:30","\'=테스트","3명","망고, 에이드 2잔 / 자몽 1잔","완료"');
 
 console.log("csv test passed");
 

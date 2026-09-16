@@ -80,6 +80,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .guestbook-check { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #dfe4ee; border-radius: 14px; background: #f5f7fb; font-weight: 800; }
 .guestbook-check input { width: 22px; height: 22px; accent-color: #172238; }
 .lookup-card { display: grid; grid-template-columns: 1fr minmax(180px, 240px) auto; gap: 14px; align-items: end; max-width: 680px; margin-top: 14px; padding: 20px; border: 1px solid #dfe4ee; border-radius: 18px; background: #fff; }
+.lookup-card[hidden] { display: none; }
 .lookup-card h2 { margin: 0; font-size: 1.1rem; }
 .lookup-card p:not(.error-message) { margin: 6px 0 0; color: #687386; font-size: 0.9rem; line-height: 1.45; }
 .lookup-card .note-field { margin-top: 0; }

@@ -120,11 +120,11 @@ function readableError(error) {
 if (isAdmin) setupAdminView();
 else setupOrderView();
 
-async function createOrder(items, note, customerName, partySize) {
+async function createOrder(items, customerName, partySize) {
   const { data, error } = await supabase
     .rpc("create_order", {
       order_items: items,
-      order_note: String(note || "").trim().slice(0, 80),
+      order_note: "",
       order_customer_name: String(customerName || "").trim().slice(0, 20),
       order_party_size: Number(partySize),
       order_device_id: getDeviceId()
@@ -369,7 +369,6 @@ async function setupOrderView() {
     try {
       const order = await createOrder(
         items,
-        document.querySelector("#order-note").value,
         document.querySelector("#customer-name").value,
         document.querySelector("#party-size").value
       );
@@ -687,11 +686,9 @@ async function setupAdminView() {
         detail.className = "order-detail";
         const customer = document.createElement("strong");
         const items = document.createElement("p");
-        const note = document.createElement("small");
         customer.textContent = formatCustomer(order);
         items.textContent = formatItems(order.items);
-        note.textContent = order.note ? `요청: ${order.note}` : statusLabels[order.status];
-        detail.append(customer, items, note);
+        detail.append(customer, items);
 
         const actions = document.createElement("div");
         actions.className = "order-actions";

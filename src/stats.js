@@ -28,7 +28,7 @@ function csvCell(value) {
 }
 
 export function ordersToCsv(orders) {
-  const header = ["주문번호", "주문일시", "주문자", "인원수", "주문메뉴", "요청사항", "상태"];
+  const header = ["주문번호", "주문일시", "주문자", "인원수", "주문메뉴", "상태"];
   const dateTime = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Seoul",
     year: "numeric",
@@ -44,7 +44,6 @@ export function ordersToCsv(orders) {
     order.customer_name,
     `${order.party_size}명`,
     order.items.map((item) => `${item.name} ${item.quantity}잔`).join(" / "),
-    order.note,
     csvStatuses[order.status] || order.status
   ]);
   return [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
