@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#172238" />
+    <meta name="description" content="2층 음료 주문과 1층 제조 접수를 연결하는 간단한 주문 화면" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>한 잔 주문</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./#order" aria-label="음료 주문 홈">
+        <span class="brand-mark" aria-hidden="true">●</span>
+        <span>한 잔 주문</span>
+      </a>
+      <span id="connection-status" class="live-pill"><span></span> 연결 중</span>
+    </header>
+
+    <main>
+      <section id="order-view" class="view" hidden>
+        <div class="intro">
+          <p class="eyebrow">2층 청소년 공간</p>
+          <h1>마실 음료를 골라주세요.</h1>
+          <p>주문이 접수되면 아래에서 진행 상태를 확인할 수 있어요.</p>
+        </div>
+
+        <form id="order-form" class="order-form">
+          <div id="menu-list" class="menu-grid" aria-live="polite"></div>
+          <label class="note-field">
+            <span>요청사항 <small>선택</small></span>
+            <input id="order-note" maxlength="80" placeholder="예: 얼음 조금만" autocomplete="off" />
+          </label>
+          <button class="primary-button" type="submit">주문 보내기</button>
+          <p id="order-error" class="error-message" role="alert"></p>
+        </form>
+
+        <section id="ticket" class="ticket" hidden aria-live="polite">
+          <p class="eyebrow">내 주문</p>
+          <div class="ticket-heading">
+            <strong id="ticket-id"></strong>
+            <span id="ticket-status" class="status-badge"></span>
+          </div>
+          <p id="ticket-items"></p>
+          <p id="ticket-message" class="ticket-message"></p>
+          <button id="new-order-button" class="secondary-button" type="button">새 주문하기</button>
+        </section>
+      </section>
+
+      <section id="admin-view" class="view admin-view" hidden>
+        <div class="admin-heading">
+          <div>
+            <p class="eyebrow">1층 음료 제조 공간</p>
+            <h1>들어온 주문</h1>
+          </div>
+          <button id="audio-button" class="audio-button" type="button">🔔 알림 켜기</button>
+        </div>
+
+        <aside class="setup-card">
+          <div>
+            <strong>2층 주문용 QR</strong>
+            <p id="order-url">주소 확인 중…</p>
+            <div class="inline-actions">
+              <button id="copy-url-button" class="text-button" type="button">주소 복사</button>
+              <a id="download-qr-link" class="text-button" download="drink-order-qr.png">QR 저장</a>
+            </div>
+          </div>
+          <img id="qr-image" alt="2층 주문 페이지 QR 코드" />
+        </aside>
+
+        <div id="order-list" class="order-list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <template id="menu-template">
+      <article class="menu-card">
+        <div>
+          <span class="menu-icon" aria-hidden="true">🥤</span>
+          <h2></h2>
+        </div>
+        <div class="quantity-control" aria-label="수량 선택">
+          <button type="button" data-action="minus" aria-label="수량 줄이기">−</button>
+          <output>0</output>
+          <button type="button" data-action="plus" aria-label="수량 늘리기">＋</button>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>
