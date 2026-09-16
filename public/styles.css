@@ -123,6 +123,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .ticket-heading strong { font-size: 2rem; letter-spacing: -0.03em; }
 .ticket > p:not(.eyebrow) { color: #566176; line-height: 1.6; }
 .ticket .ticket-customer { margin-bottom: 4px; color: #172238; font-weight: 800; }
+.ticket #ticket-items { padding: 12px 14px; border-radius: 12px; background: #f5f7fb; white-space: pre-line; line-height: 1.9; }
 .ticket-message { font-weight: 750; color: #172238 !important; }
 
 .status-badge { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border-radius: 999px; background: #fff1c7; color: #714f00; font-size: 0.875rem; font-weight: 800; }
@@ -169,7 +170,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .order-card.is-done, .order-card.is-canceled { opacity: 0.58; border-left-color: #98a2b3; }
 .order-number strong { display: block; font-size: 1.45rem; }
 .order-number time { color: #6e788a; font-size: 0.875rem; }
-.order-detail p { margin: 0; font-weight: 750; }
+.order-detail p { margin: 0; padding: 10px 12px; border-radius: 10px; background: #f5f7fb; font-weight: 750; white-space: pre-line; line-height: 1.8; }
 .order-detail strong { display: block; margin-bottom: 6px; }
 .order-detail small { display: block; margin-top: 7px; color: #687386; font-size: 0.9rem; }
 .order-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }

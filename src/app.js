@@ -23,7 +23,7 @@ function displayId(order) {
 }
 
 function formatItems(items) {
-  return items.map((item) => `${item.name} ${item.quantity}잔`).join(" · ");
+  return items.map((item) => `• ${item.name} — ${item.quantity}잔`).join("\n");
 }
 
 function formatCustomer(order) {
