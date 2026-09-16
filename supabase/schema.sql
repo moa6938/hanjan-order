@@ -467,6 +467,33 @@ begin
 end;
 $$;
 
+create or replace function public.admin_delete_orders_by_month(pin text, selected_month date)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  month_start date;
+  removed_count integer;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+
+  if selected_month is null then
+    raise exception 'invalid month' using errcode = '22023';
+  end if;
+
+  month_start := date_trunc('month', selected_month)::date;
+  delete from public.orders
+  where order_day >= month_start
+    and order_day < (month_start + interval '1 month')::date;
+  get diagnostics removed_count = row_count;
+  return removed_count;
+end;
+$$;
+
 revoke all on function public.create_order(jsonb, text, text, integer, uuid) from public;
 revoke all on function public.list_menu_items() from public;
 revoke all on function public.get_order(uuid) from public;
@@ -482,6 +509,7 @@ revoke all on function public.admin_set_menu_available(text, text, boolean) from
 revoke all on function public.admin_reorder_menu(text, text[]) from public;
 revoke all on function public.admin_remove_menu(text, text) from public;
 revoke all on function public.admin_delete_order(text, uuid) from public;
+revoke all on function public.admin_delete_orders_by_month(text, date) from public;
 
 grant execute on function public.create_order(jsonb, text, text, integer, uuid) to anon, authenticated;
 grant execute on function public.list_menu_items() to anon, authenticated;
@@ -498,6 +526,7 @@ grant execute on function public.admin_set_menu_available(text, text, boolean) t
 grant execute on function public.admin_reorder_menu(text, text[]) to anon, authenticated;
 grant execute on function public.admin_remove_menu(text, text) to anon, authenticated;
 grant execute on function public.admin_delete_order(text, uuid) to anon, authenticated;
+grant execute on function public.admin_delete_orders_by_month(text, date) to anon, authenticated;
 
 -- Run this separately in the SQL Editor with the real PIN; do not commit it:
 -- select private.set_admin_pin('replace-with-your-pin');

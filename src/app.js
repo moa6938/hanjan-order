@@ -445,6 +445,7 @@ async function setupAdminView() {
   const popularList = document.querySelector("#popular-menu-list");
   const statsMonth = document.querySelector("#stats-month");
   const csvButton = document.querySelector("#download-orders-csv");
+  const deleteMonthButton = document.querySelector("#delete-month-orders");
   const orders = new Map();
   const knownOrderIds = new Set();
   let monthlyOrders = [];
@@ -472,6 +473,7 @@ async function setupAdminView() {
     document.querySelector("#stat-done").textContent = `${summary.done}건`;
     document.querySelector("#stat-canceled").textContent = `${summary.canceled}건`;
     csvButton.disabled = monthlyOrders.length === 0;
+    deleteMonthButton.disabled = monthlyOrders.length === 0;
     popularList.replaceChildren();
     if (!summary.popular.length) {
       const empty = document.createElement("li");
@@ -500,6 +502,29 @@ async function setupAdminView() {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url));
+  });
+
+  deleteMonthButton.addEventListener("click", async () => {
+    const [year, month] = statsMonth.value.split("-");
+    const monthLabel = `${year}년 ${Number(month)}월`;
+    const confirmed = confirm(
+      `${monthLabel} 주문 데이터 ${monthlyOrders.length}건을 모두 영구 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`
+    );
+    if (!confirmed) return;
+
+    deleteMonthButton.disabled = true;
+    const { data: removedCount, error } = await supabase.rpc("admin_delete_orders_by_month", {
+      pin: adminPin,
+      selected_month: `${statsMonth.value}-01`
+    });
+    if (error) {
+      alert(readableError(error));
+      deleteMonthButton.disabled = false;
+      return;
+    }
+
+    alert(`${removedCount}건의 주문 데이터를 삭제했습니다.`);
+    await Promise.all([refreshOrders(), refreshMonthlyStats()]);
   });
 
   function chime() {
