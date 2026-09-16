@@ -115,7 +115,7 @@ async function setupOrderView() {
     const submit = form.querySelector("button[type=submit]");
     submit.disabled = submitting || locked || tooMany;
     submit.textContent = locked ? "오늘 주문 완료" : tooMany ? "인원수 확인 필요" : submitting ? "주문 처리 중…" : "주문 보내기";
-    quantityError.textContent = tooMany ? `인원수 ${partySize}명보다 음료 ${total}잔이 많습니다.` : "";
+    quantityError.textContent = tooMany ? "인당 음료는 하나만 주문할 수 있습니다." : "";
   }
 
   function updateOrderAccess(order) {
