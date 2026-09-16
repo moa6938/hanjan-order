@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
     <title>한 잔 주문</title>
-    <script type="module" crossorigin src="./assets/index-BcKsI339.js"></script>
+    <script type="module" crossorigin src="./assets/index-Dside-Ft.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -50,27 +50,41 @@
       </section>
 
       <section id="admin-view" class="view admin-view" hidden>
-        <div class="admin-heading">
-          <div>
-            <p class="eyebrow">1층 음료 제조 공간</p>
-            <h1>들어온 주문</h1>
-          </div>
-          <button id="audio-button" class="audio-button" type="button">🔔 알림 켜기</button>
-        </div>
+        <form id="admin-login" class="login-card">
+          <p class="eyebrow">1층 음료 제조 공간</p>
+          <h1>관리자 확인</h1>
+          <p>주문을 확인하려면 관리자 비밀번호를 입력하세요.</p>
+          <label class="note-field">
+            <span>비밀번호</span>
+            <input id="admin-pin" type="password" inputmode="numeric" pattern="[0-9]{4,12}" maxlength="12" autocomplete="current-password" required autofocus />
+          </label>
+          <button class="primary-button" type="submit">관리 화면 열기</button>
+          <p id="admin-login-error" class="error-message" role="alert"></p>
+        </form>
 
-        <aside class="setup-card">
-          <div>
-            <strong>2층 주문용 QR</strong>
-            <p id="order-url">주소 확인 중…</p>
-            <div class="inline-actions">
-              <button id="copy-url-button" class="text-button" type="button">주소 복사</button>
-              <a id="download-qr-link" class="text-button" download="drink-order-qr.png">QR 저장</a>
+        <div id="admin-dashboard" hidden>
+          <div class="admin-heading">
+            <div>
+              <p class="eyebrow">1층 음료 제조 공간</p>
+              <h1>들어온 주문</h1>
             </div>
+            <button id="audio-button" class="audio-button" type="button">🔔 알림 켜기</button>
           </div>
-          <img id="qr-image" alt="2층 주문 페이지 QR 코드" />
-        </aside>
 
-        <div id="order-list" class="order-list" aria-live="polite"></div>
+          <aside class="setup-card">
+            <div>
+              <strong>2층 주문용 QR</strong>
+              <p id="order-url">주소 확인 중…</p>
+              <div class="inline-actions">
+                <button id="copy-url-button" class="text-button" type="button">주소 복사</button>
+                <a id="download-qr-link" class="text-button" download="drink-order-qr.png">QR 저장</a>
+              </div>
+            </div>
+            <img id="qr-image" alt="2층 주문 페이지 QR 코드" />
+          </aside>
+
+          <div id="order-list" class="order-list" aria-live="polite"></div>
+        </div>
       </section>
     </main>
 
