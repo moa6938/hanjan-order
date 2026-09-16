@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
     <title>한 잔 주문</title>
-    <script type="module" crossorigin src="./assets/index-BKmytava.js"></script>
+    <script type="module" crossorigin src="./assets/index-Guelblg1.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -28,6 +28,16 @@
         </div>
 
         <form id="order-form" class="order-form">
+          <div class="order-meta">
+            <label class="note-field">
+              <span>주문자 이름</span>
+              <input id="customer-name" maxlength="20" placeholder="예: 홍길동" autocomplete="name" required />
+            </label>
+            <label class="note-field">
+              <span>인원수</span>
+              <input id="party-size" type="number" min="1" max="20" value="1" inputmode="numeric" required />
+            </label>
+          </div>
           <div id="menu-list" class="menu-sections" aria-live="polite"></div>
           <label class="note-field">
             <span>요청사항 <small>선택</small></span>
@@ -43,6 +53,7 @@
             <strong id="ticket-id"></strong>
             <span id="ticket-status" class="status-badge"></span>
           </div>
+          <p id="ticket-customer" class="ticket-customer"></p>
           <p id="ticket-items"></p>
           <p id="ticket-message" class="ticket-message"></p>
           <button id="new-order-button" class="secondary-button" type="button">새 주문하기</button>

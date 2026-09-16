@@ -24,6 +24,10 @@ function formatItems(items) {
   return items.map((item) => `${item.name} ${item.quantity}잔`).join(" · ");
 }
 
+function formatCustomer(order) {
+  return `${order.customer_name} · ${order.party_size}명`;
+}
+
 function formatTime(iso) {
   return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
@@ -42,6 +46,9 @@ function readableError(error) {
   if (error?.message?.includes("menu item unavailable")) {
     return "선택한 메뉴가 품절되었거나 변경됐습니다. 다시 선택해 주세요.";
   }
+  if (error?.message?.includes("invalid customer") || error?.message?.includes("invalid party")) {
+    return "주문자 이름과 인원수를 확인해 주세요.";
+  }
   if (error?.code === "23505") {
     return "같은 이름의 메뉴가 이미 있습니다.";
   }
@@ -51,9 +58,14 @@ function readableError(error) {
 if (isAdmin) setupAdminView();
 else setupOrderView();
 
-async function createOrder(items, note) {
+async function createOrder(items, note, customerName, partySize) {
   const { data, error } = await supabase
-    .rpc("create_order", { order_items: items, order_note: String(note || "").trim().slice(0, 80) })
+    .rpc("create_order", {
+      order_items: items,
+      order_note: String(note || "").trim().slice(0, 80),
+      order_customer_name: String(customerName || "").trim().slice(0, 20),
+      order_party_size: Number(partySize)
+    })
     .single();
   if (error) throw error;
   return data;
@@ -153,7 +165,12 @@ async function setupOrderView() {
     const submit = form.querySelector("button[type=submit]");
     submit.disabled = true;
     try {
-      const order = await createOrder(items, document.querySelector("#order-note").value);
+      const order = await createOrder(
+        items,
+        document.querySelector("#order-note").value,
+        document.querySelector("#customer-name").value,
+        document.querySelector("#party-size").value
+      );
       sessionStorage.setItem("activeOrderId", order.id);
       showTicket(order);
       startOrderPolling(order.id);
@@ -188,6 +205,7 @@ function showTicket(order) {
   const ticket = document.querySelector("#ticket");
   const badge = document.querySelector("#ticket-status");
   document.querySelector("#ticket-id").textContent = displayId(order);
+  document.querySelector("#ticket-customer").textContent = formatCustomer(order);
   document.querySelector("#ticket-items").textContent = formatItems(order.items);
   badge.textContent = statusLabels[order.status];
   badge.className = `status-badge status-${order.status}`;
@@ -377,11 +395,13 @@ async function setupAdminView() {
 
         const detail = document.createElement("div");
         detail.className = "order-detail";
+        const customer = document.createElement("strong");
         const items = document.createElement("p");
         const note = document.createElement("small");
+        customer.textContent = formatCustomer(order);
         items.textContent = formatItems(order.items);
         note.textContent = order.note ? `요청: ${order.note}` : statusLabels[order.status];
-        detail.append(items, note);
+        detail.append(customer, items, note);
 
         const actions = document.createElement("div");
         actions.className = "order-actions";

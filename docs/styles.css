@@ -74,6 +74,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .intro > p:last-child { margin: 18px 0 0; color: #5d687b; font-size: 1rem; line-height: 1.65; }
 
 .order-form { margin-top: 38px; }
+.order-meta { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 28px; }
+.order-meta .note-field { margin-top: 0; }
 .menu-sections { display: grid; gap: 32px; }
 .menu-section-title { margin: 0 0 12px; color: #4b596f; font-size: 1rem; letter-spacing: 0.08em; }
 .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -120,6 +122,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .ticket-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .ticket-heading strong { font-size: 2rem; letter-spacing: -0.03em; }
 .ticket > p:not(.eyebrow) { color: #566176; line-height: 1.6; }
+.ticket .ticket-customer { margin-bottom: 4px; color: #172238; font-weight: 800; }
 .ticket-message { font-weight: 750; color: #172238 !important; }
 
 .status-badge { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border-radius: 999px; background: #fff1c7; color: #714f00; font-size: 0.875rem; font-weight: 800; }
@@ -167,6 +170,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .order-number strong { display: block; font-size: 1.45rem; }
 .order-number time { color: #6e788a; font-size: 0.875rem; }
 .order-detail p { margin: 0; font-weight: 750; }
+.order-detail strong { display: block; margin-bottom: 6px; }
 .order-detail small { display: block; margin-top: 7px; color: #687386; font-size: 0.9rem; }
 .order-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .order-actions button { min-height: 42px; padding: 0 14px; border: 1px solid #d3d9e4; border-radius: 10px; background: #f5f7fb; color: #172238; font-weight: 800; }
@@ -178,6 +182,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 
 @media (max-width: 720px) {
   main { padding-top: 38px; }
+  .order-meta { grid-template-columns: 1fr; }
   .menu-grid { grid-template-columns: 1fr; }
   .menu-card { min-height: 150px; }
   .admin-heading { align-items: stretch; flex-direction: column; }
