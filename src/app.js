@@ -155,11 +155,13 @@ async function setupOrderView() {
     });
   }
 
-  function updateOrderAccess(order) {
+  function updateOrderAccess(order, restoreCustomerInfo = false) {
     currentOrder = order;
     const locked = isTodayOrder(order) && order.status !== "canceled";
-    nameInput.value = order.customer_name;
-    partySizeInput.value = order.party_size;
+    if (restoreCustomerInfo) {
+      nameInput.value = order.customer_name;
+      partySizeInput.value = order.party_size;
+    }
     document.querySelector("#new-order-button").textContent = locked ? "메뉴 다시 보기" : "새 주문하기";
     updateSubmitState();
   }
@@ -311,7 +313,7 @@ async function setupOrderView() {
     const { data: order } = await supabase.rpc("get_order", { order_id: activeOrderId }).maybeSingle();
     if (order) {
       showTicket(order);
-      updateOrderAccess(order);
+      updateOrderAccess(order, true);
       startOrderPolling(order.id);
       form.hidden = true;
       intake.hidden = isTodayOrder(order) && order.status !== "canceled";
