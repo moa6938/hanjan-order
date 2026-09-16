@@ -121,6 +121,10 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .status-done { background: #dff6eb; color: #126443; }
 .status-canceled { background: #eceff4; color: #5c6575; }
 
+.login-card { max-width: 460px; margin: 7vh auto 0; padding: 30px; border: 1px solid #dfe4ee; border-radius: 22px; background: #fff; box-shadow: 0 18px 48px rgba(42, 53, 74, 0.08); }
+.login-card h1 { font-size: clamp(2rem, 5vw, 3rem); }
+.login-card > p:not(.eyebrow, .error-message) { color: #5d687b; line-height: 1.6; }
+
 .admin-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .admin-heading h1 { font-size: clamp(2.3rem, 5vw, 4.4rem); }
 .audio-button { padding: 0 18px; background: #ff6a5b; color: #fff; white-space: nowrap; }
