@@ -99,18 +99,30 @@ async function setupOrderView() {
   const menuList = document.querySelector("#menu-list");
   const template = document.querySelector("#menu-template");
   const error = document.querySelector("#order-error");
+  const quantityError = document.querySelector("#quantity-error");
+  const partySizeInput = document.querySelector("#party-size");
   const quantities = new Map();
   let menu = [];
   let pollingTimer;
   let currentOrder;
+  let submitting = false;
+
+  function updateSubmitState() {
+    const total = [...quantities.values()].reduce((sum, quantity) => sum + quantity, 0);
+    const partySize = Number(partySizeInput.value) || 0;
+    const tooMany = total > partySize;
+    const locked = currentOrder && isTodayOrder(currentOrder) && currentOrder.status !== "canceled";
+    const submit = form.querySelector("button[type=submit]");
+    submit.disabled = submitting || locked || tooMany;
+    submit.textContent = locked ? "오늘 주문 완료" : tooMany ? "인원수 확인 필요" : submitting ? "주문 처리 중…" : "주문 보내기";
+    quantityError.textContent = tooMany ? `인원수 ${partySize}명보다 음료 ${total}잔이 많습니다.` : "";
+  }
 
   function updateOrderAccess(order) {
     currentOrder = order;
     const locked = isTodayOrder(order) && order.status !== "canceled";
-    const submit = form.querySelector("button[type=submit]");
-    submit.disabled = locked;
-    submit.textContent = locked ? "오늘 주문 완료" : "주문 보내기";
     document.querySelector("#new-order-button").textContent = locked ? "메뉴 다시 보기" : "새 주문하기";
+    updateSubmitState();
   }
 
   function startOrderPolling(orderId) {
@@ -163,12 +175,14 @@ async function setupOrderView() {
           quantities.set(item.id, next);
           output.value = next;
           output.textContent = next;
+          updateSubmitState();
         });
         grid.append(card);
       });
       section.append(title, grid);
       menuList.append(section);
     });
+    updateSubmitState();
   }
 
   async function refreshMenu() {
@@ -187,6 +201,8 @@ async function setupOrderView() {
     setConnectionStatus(false);
   }
 
+  partySizeInput.addEventListener("input", updateSubmitState);
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.textContent = "";
@@ -198,13 +214,14 @@ async function setupOrderView() {
     const items = [...quantities]
       .filter(([, quantity]) => quantity > 0)
       .map(([id, quantity]) => ({ id, name: menu.find((item) => item.id === id).name, quantity }));
+    if ([...quantities.values()].reduce((sum, quantity) => sum + quantity, 0) > Number(partySizeInput.value)) return;
     if (!items.length) {
       error.textContent = "음료를 한 개 이상 선택해 주세요.";
       return;
     }
 
-    const submit = form.querySelector("button[type=submit]");
-    submit.disabled = true;
+    submitting = true;
+    updateSubmitState();
     try {
       const order = await createOrder(
         items,
@@ -220,7 +237,8 @@ async function setupOrderView() {
     } catch (requestError) {
       error.textContent = readableError(requestError);
     } finally {
-      submit.disabled = Boolean(currentOrder && isTodayOrder(currentOrder) && currentOrder.status !== "canceled");
+      submitting = false;
+      updateSubmitState();
     }
   });
 
