@@ -448,6 +448,25 @@ begin
 end;
 $$;
 
+create or replace function public.admin_delete_order(pin text, order_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  removed_count integer;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+
+  delete from public.orders where id = order_id;
+  get diagnostics removed_count = row_count;
+  return removed_count = 1;
+end;
+$$;
+
 revoke all on function public.create_order(jsonb, text, text, integer, uuid) from public;
 revoke all on function public.list_menu_items() from public;
 revoke all on function public.get_order(uuid) from public;
@@ -462,6 +481,7 @@ revoke all on function public.admin_rename_menu(text, text, text) from public;
 revoke all on function public.admin_set_menu_available(text, text, boolean) from public;
 revoke all on function public.admin_reorder_menu(text, text[]) from public;
 revoke all on function public.admin_remove_menu(text, text) from public;
+revoke all on function public.admin_delete_order(text, uuid) from public;
 
 grant execute on function public.create_order(jsonb, text, text, integer, uuid) to anon, authenticated;
 grant execute on function public.list_menu_items() to anon, authenticated;
@@ -477,6 +497,7 @@ grant execute on function public.admin_rename_menu(text, text, text) to anon, au
 grant execute on function public.admin_set_menu_available(text, text, boolean) to anon, authenticated;
 grant execute on function public.admin_reorder_menu(text, text[]) to anon, authenticated;
 grant execute on function public.admin_remove_menu(text, text) to anon, authenticated;
+grant execute on function public.admin_delete_order(text, uuid) to anon, authenticated;
 
 -- Run this separately in the SQL Editor with the real PIN; do not commit it:
 -- select private.set_admin_pin('replace-with-your-pin');

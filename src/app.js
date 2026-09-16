@@ -697,6 +697,27 @@ async function setupAdminView() {
         if (order.status === "new") actions.append(statusButton("제조 시작", "making", true));
         if (order.status === "making") actions.append(statusButton("완료", "done", true));
         if (!["done", "canceled"].includes(order.status)) actions.append(statusButton("취소", "canceled"));
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "danger";
+        remove.textContent = "데이터 삭제";
+        remove.addEventListener("click", async () => {
+          if (!confirm(`${displayId(order)} · ${order.customer_name} 주문 데이터를 영구 삭제할까요?`)) return;
+          remove.disabled = true;
+          const { data: removed, error } = await supabase.rpc("admin_delete_order", {
+            pin: adminPin,
+            order_id: order.id
+          });
+          if (error || !removed) {
+            alert(error ? readableError(error) : "이미 삭제된 주문입니다.");
+            remove.disabled = false;
+          } else {
+            orders.delete(order.id);
+            render();
+            refreshMonthlyStats().catch(() => setConnectionStatus(false));
+          }
+        });
+        actions.append(remove);
 
         function statusButton(label, status, emphasized = false) {
           const button = document.createElement("button");

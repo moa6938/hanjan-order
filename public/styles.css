@@ -216,6 +216,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .order-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .order-actions button { min-height: 42px; padding: 0 14px; border: 1px solid #d3d9e4; border-radius: 10px; background: #f5f7fb; color: #172238; font-weight: 800; }
 .order-actions .complete { border-color: #172238; background: #172238; color: #fff; }
+.order-actions .danger { border-color: #e8b5b1; background: #fff5f4; color: #b6352c; }
 .empty-state { padding: 70px 20px; border: 1px dashed #cbd2df; border-radius: 18px; color: #6e788a; text-align: center; background: rgba(255,255,255,0.5); }
 .empty-state strong { display: block; margin-bottom: 7px; color: #172238; font-size: 1.2rem; }
 
