@@ -9,6 +9,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 const statusLabels = { new: "접수 대기", making: "제조 중", done: "완료", canceled: "취소됨" };
 const menuCategories = ["ADE", "NON SODA"];
+const activeOrderKey = "activeOrderId";
+const deviceIdKey = "drinkOrderDeviceId";
 const orderView = document.querySelector("#order-view");
 const adminView = document.querySelector("#admin-view");
 const isAdmin = location.hash === "#admin" || location.pathname === "/admin";
@@ -32,6 +34,23 @@ function formatTime(iso) {
   return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
 
+function getDeviceId() {
+  let id = localStorage.getItem(deviceIdKey);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(deviceIdKey, id);
+  }
+  return id;
+}
+
+function todayInSeoul() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+}
+
+function isTodayOrder(order) {
+  return order.order_day === todayInSeoul();
+}
+
 function setConnectionStatus(connected) {
   const element = document.querySelector("#connection-status");
   element.lastChild.textContent = connected ? " 연결됨" : " 연결 중";
@@ -49,6 +68,9 @@ function readableError(error) {
   if (error?.message?.includes("invalid customer") || error?.message?.includes("invalid party")) {
     return "주문자 이름과 인원수를 확인해 주세요.";
   }
+  if (error?.message?.includes("orders_one_active_per_device_day")) {
+    return "이 기기에서는 오늘 이미 주문했습니다. 기존 주문이 취소되면 다시 주문할 수 있어요.";
+  }
   if (error?.code === "23505") {
     return "같은 이름의 메뉴가 이미 있습니다.";
   }
@@ -64,7 +86,8 @@ async function createOrder(items, note, customerName, partySize) {
       order_items: items,
       order_note: String(note || "").trim().slice(0, 80),
       order_customer_name: String(customerName || "").trim().slice(0, 20),
-      order_party_size: Number(partySize)
+      order_party_size: Number(partySize),
+      order_device_id: getDeviceId()
     })
     .single();
   if (error) throw error;
@@ -79,13 +102,26 @@ async function setupOrderView() {
   const quantities = new Map();
   let menu = [];
   let pollingTimer;
+  let currentOrder;
+
+  function updateOrderAccess(order) {
+    currentOrder = order;
+    const locked = isTodayOrder(order) && order.status !== "canceled";
+    const submit = form.querySelector("button[type=submit]");
+    submit.disabled = locked;
+    submit.textContent = locked ? "오늘 주문 완료" : "주문 보내기";
+    document.querySelector("#new-order-button").textContent = locked ? "메뉴 다시 보기" : "새 주문하기";
+  }
 
   function startOrderPolling(orderId) {
     clearInterval(pollingTimer);
     const refresh = async () => {
       const { data: order, error: requestError } = await supabase.rpc("get_order", { order_id: orderId }).maybeSingle();
       setConnectionStatus(!requestError);
-      if (order) showTicket(order);
+      if (order) {
+        showTicket(order);
+        updateOrderAccess(order);
+      }
     };
     refresh();
     pollingTimer = setInterval(refresh, 2500);
@@ -154,6 +190,11 @@ async function setupOrderView() {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.textContent = "";
+    if (currentOrder && isTodayOrder(currentOrder) && currentOrder.status !== "canceled") {
+      error.textContent = "이 기기에서는 오늘 이미 주문했습니다. 내 주문 상태를 확인해 주세요.";
+      document.querySelector("#ticket").scrollIntoView({ behavior: "smooth" });
+      return;
+    }
     const items = [...quantities]
       .filter(([, quantity]) => quantity > 0)
       .map(([id, quantity]) => ({ id, name: menu.find((item) => item.id === id).name, quantity }));
@@ -171,31 +212,35 @@ async function setupOrderView() {
         document.querySelector("#customer-name").value,
         document.querySelector("#party-size").value
       );
-      sessionStorage.setItem("activeOrderId", order.id);
+      localStorage.setItem(activeOrderKey, order.id);
       showTicket(order);
+      updateOrderAccess(order);
       startOrderPolling(order.id);
       form.hidden = true;
     } catch (requestError) {
       error.textContent = readableError(requestError);
     } finally {
-      submit.disabled = false;
+      submit.disabled = Boolean(currentOrder && isTodayOrder(currentOrder) && currentOrder.status !== "canceled");
     }
   });
 
   document.querySelector("#new-order-button").addEventListener("click", () => {
-    sessionStorage.removeItem("activeOrderId");
-    location.reload();
+    form.hidden = false;
+    form.scrollIntoView({ behavior: "smooth" });
   });
 
-  const activeOrderId = sessionStorage.getItem("activeOrderId");
+  const activeOrderId = localStorage.getItem(activeOrderKey) || sessionStorage.getItem(activeOrderKey);
   if (activeOrderId) {
+    localStorage.setItem(activeOrderKey, activeOrderId);
+    sessionStorage.removeItem(activeOrderKey);
     const { data: order } = await supabase.rpc("get_order", { order_id: activeOrderId }).maybeSingle();
     if (order) {
       showTicket(order);
+      updateOrderAccess(order);
       startOrderPolling(order.id);
-      form.hidden = true;
+      form.hidden = isTodayOrder(order) && order.status !== "canceled";
     } else {
-      sessionStorage.removeItem("activeOrderId");
+      localStorage.removeItem(activeOrderKey);
     }
   }
 
@@ -210,10 +255,10 @@ function showTicket(order) {
   badge.textContent = statusLabels[order.status];
   badge.className = `status-badge status-${order.status}`;
   document.querySelector("#ticket-message").textContent = {
-    new: "1층에서 주문을 확인하고 있어요.",
-    making: "음료를 만들고 있어요. 잠시만 기다려주세요.",
-    done: "음료가 완성됐어요. 1층에서 받아주세요!",
-    canceled: "주문이 취소됐어요. 1층에 문의해주세요."
+    new: "1층에서 주문을 확인하고 있어요. 오늘은 이 주문만 가능해요.",
+    making: "음료를 만들고 있어요. 오늘은 이 주문만 가능해요.",
+    done: "음료가 완성됐어요. 1층에서 받아주세요! 오늘은 이 주문만 가능해요.",
+    canceled: "주문이 취소됐어요. 새 주문을 할 수 있습니다."
   }[order.status];
   ticket.hidden = false;
 }
