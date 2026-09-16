@@ -96,7 +96,9 @@ async function createOrder(items, note, customerName, partySize) {
 }
 
 async function setupOrderView() {
+  const intake = document.querySelector("#order-intake");
   const form = document.querySelector("#order-form");
+  const nameInput = document.querySelector("#customer-name");
   const menuList = document.querySelector("#menu-list");
   const template = document.querySelector("#menu-template");
   const error = document.querySelector("#order-error");
@@ -122,9 +124,29 @@ async function setupOrderView() {
   function updateOrderAccess(order) {
     currentOrder = order;
     const locked = isTodayOrder(order) && order.status !== "canceled";
+    nameInput.value = order.customer_name;
+    partySizeInput.value = order.party_size;
     document.querySelector("#new-order-button").textContent = locked ? "메뉴 다시 보기" : "새 주문하기";
     updateSubmitState();
   }
+
+  function openMenu() {
+    document.querySelector("#order-summary-text").textContent = `${nameInput.value.trim()} · ${partySizeInput.value}명`;
+    intake.hidden = true;
+    form.hidden = false;
+    form.scrollIntoView({ behavior: "smooth" });
+  }
+
+  intake.addEventListener("submit", (event) => {
+    event.preventDefault();
+    openMenu();
+  });
+
+  document.querySelector("#edit-order-info").addEventListener("click", () => {
+    form.hidden = true;
+    intake.hidden = false;
+    intake.scrollIntoView({ behavior: "smooth" });
+  });
 
   function startOrderPolling(orderId) {
     clearInterval(pollingTimer);
@@ -244,8 +266,14 @@ async function setupOrderView() {
   });
 
   document.querySelector("#new-order-button").addEventListener("click", () => {
-    form.hidden = false;
-    form.scrollIntoView({ behavior: "smooth" });
+    const locked = currentOrder && isTodayOrder(currentOrder) && currentOrder.status !== "canceled";
+    document.querySelector("#edit-order-info").hidden = locked;
+    if (locked) openMenu();
+    else {
+      form.hidden = true;
+      intake.hidden = false;
+      intake.scrollIntoView({ behavior: "smooth" });
+    }
   });
 
   const activeOrderId = localStorage.getItem(activeOrderKey) || sessionStorage.getItem(activeOrderKey);
@@ -257,7 +285,8 @@ async function setupOrderView() {
       showTicket(order);
       updateOrderAccess(order);
       startOrderPolling(order.id);
-      form.hidden = isTodayOrder(order) && order.status !== "canceled";
+      form.hidden = true;
+      intake.hidden = isTodayOrder(order) && order.status !== "canceled";
     } else {
       localStorage.removeItem(activeOrderKey);
     }

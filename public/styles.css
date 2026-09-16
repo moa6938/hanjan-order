@@ -73,7 +73,15 @@ main { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 54px 0 80
 h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-spacing: -0.05em; }
 .intro > p:last-child { margin: 18px 0 0; color: #5d687b; font-size: 1rem; line-height: 1.65; }
 
+.intake-card { max-width: 680px; margin-top: 38px; padding: 28px; border: 1px solid #dfe4ee; border-radius: 22px; background: #fff; box-shadow: 0 16px 40px rgba(42, 53, 74, 0.06); }
+.intake-card h2 { margin: 0; font-size: 1.6rem; }
+.intake-card > p { margin: 8px 0 22px; color: #687386; }
+.intake-card .order-meta { margin-bottom: 18px; }
+.guestbook-check { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #dfe4ee; border-radius: 14px; background: #f5f7fb; font-weight: 800; }
+.guestbook-check input { width: 22px; height: 22px; accent-color: #172238; }
 .order-form { margin-top: 38px; }
+.order-summary { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 24px; padding: 16px 18px; border-radius: 14px; background: #172238; color: #fff; }
+.order-summary button { min-height: 38px; padding: 0 12px; border: 1px solid #64718a; border-radius: 9px; background: transparent; color: #fff; font-weight: 750; }
 .order-meta { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 28px; }
 .order-meta .note-field { margin-top: 0; }
 .menu-sections { display: grid; gap: 32px; }
