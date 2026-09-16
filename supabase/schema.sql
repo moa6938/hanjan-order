@@ -31,38 +31,144 @@ create index if not exists orders_created_at_idx on public.orders (created_at de
 alter table public.orders enable row level security;
 
 revoke all on table public.orders from anon, authenticated;
-grant select, insert on table public.orders to anon, authenticated;
-grant update (status, updated_at) on table public.orders to anon, authenticated;
-grant usage, select on sequence public.orders_order_number_seq to anon, authenticated;
+revoke all on sequence public.orders_order_number_seq from anon, authenticated;
 
 drop policy if exists "orders are readable" on public.orders;
-create policy "orders are readable"
-on public.orders for select
-to anon, authenticated
-using (true);
-
 drop policy if exists "orders can be created" on public.orders;
-create policy "orders can be created"
-on public.orders for insert
-to anon, authenticated
-with check (status = 'new');
-
 drop policy if exists "order status can be updated" on public.orders;
-create policy "order status can be updated"
-on public.orders for update
-to anon, authenticated
-using (true)
-with check (status in ('new', 'making', 'done', 'canceled'));
 
-do $$
+create extension if not exists pgcrypto with schema extensions;
+create schema if not exists private;
+revoke all on schema private from public;
+
+create table if not exists private.admin_config (
+  id boolean primary key default true check (id),
+  pin_hash text not null
+);
+
+alter table private.admin_config enable row level security;
+revoke all on table private.admin_config from public, anon, authenticated;
+
+create or replace function private.set_admin_pin(value text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
-  if not exists (
-    select 1
-    from pg_publication_tables
-    where pubname = 'supabase_realtime'
-      and schemaname = 'public'
-      and tablename = 'orders'
-  ) then
-    alter publication supabase_realtime add table public.orders;
+  if value !~ '^[0-9]{4,12}$' then
+    raise exception 'admin pin must contain 4 to 12 digits';
   end if;
-end $$;
+
+  insert into private.admin_config (id, pin_hash)
+  values (true, extensions.crypt(value, extensions.gen_salt('bf', 10)))
+  on conflict (id) do update set pin_hash = excluded.pin_hash;
+end;
+$$;
+
+revoke all on function private.set_admin_pin(text) from public;
+
+create or replace function private.admin_pin_ok(value text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    (select extensions.crypt(value, pin_hash) = pin_hash from private.admin_config where id = true),
+    false
+  );
+$$;
+
+revoke all on function private.admin_pin_ok(text) from public;
+
+create or replace function public.create_order(order_items jsonb, order_note text default '')
+returns public.orders
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  created public.orders;
+begin
+  insert into public.orders (items, note)
+  values (order_items, trim(left(coalesce(order_note, ''), 80)))
+  returning * into created;
+  return created;
+end;
+$$;
+
+create or replace function public.get_order(order_id uuid)
+returns public.orders
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.orders where id = order_id;
+$$;
+
+create or replace function public.admin_check_pin(pin text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select private.admin_pin_ok(pin);
+$$;
+
+create or replace function public.admin_list_orders(pin text)
+returns setof public.orders
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+  return query select * from public.orders order by created_at desc limit 200;
+end;
+$$;
+
+create or replace function public.admin_update_order(pin text, order_id uuid, next_status text)
+returns public.orders
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  updated public.orders;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+  if next_status not in ('making', 'done', 'canceled') then
+    raise exception 'invalid order status';
+  end if;
+
+  update public.orders
+  set status = next_status, updated_at = now()
+  where id = order_id
+  returning * into updated;
+  return updated;
+end;
+$$;
+
+revoke all on function public.create_order(jsonb, text) from public;
+revoke all on function public.get_order(uuid) from public;
+revoke all on function public.admin_check_pin(text) from public;
+revoke all on function public.admin_list_orders(text) from public;
+revoke all on function public.admin_update_order(text, uuid, text) from public;
+
+grant execute on function public.create_order(jsonb, text) to anon, authenticated;
+grant execute on function public.get_order(uuid) to anon, authenticated;
+grant execute on function public.admin_check_pin(text) to anon, authenticated;
+grant execute on function public.admin_list_orders(text) to anon, authenticated;
+grant execute on function public.admin_update_order(text, uuid, text) to anon, authenticated;
+
+-- Run this separately in the SQL Editor with the real PIN; do not commit it:
+-- select private.set_admin_pin('replace-with-your-pin');
