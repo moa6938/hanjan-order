@@ -110,7 +110,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 }
 .menu-icon { display: block; margin-bottom: 10px; font-size: 1.65rem; }
 .menu-card h2 { margin: 0; font-size: 1.08rem; letter-spacing: -0.02em; }
-.menu-card.is-selected { border-color: #ff6a5b; background: #fff3f0; box-shadow: 0 16px 40px rgba(255, 106, 91, 0.14); }
+.menu-card.is-selected { border-color: #22a06b; background: #eefaf4; box-shadow: 0 16px 40px rgba(34, 160, 107, 0.14); }
 .menu-card.is-sold-out { opacity: 0.55; }
 .sold-out-label { display: inline-flex; margin-top: 10px; padding: 5px 9px; border-radius: 999px; background: #eceff4; color: #5c6575; font-size: 0.8rem; font-weight: 800; }
 .sold-out-label[hidden] { display: none; }
