@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
-import { summarizeOrders } from "./stats.js";
+import { ordersToCsv, summarizeOrders } from "./stats.js";
 
 const SUPABASE_URL = "https://oltgqudykkdsbifcuruy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Z0wEhJVmJyuS2dS8jXLvaQ_kat48hsY";
@@ -355,6 +355,7 @@ async function setupAdminView() {
   const panels = [...document.querySelectorAll(".admin-panel")];
   const popularList = document.querySelector("#popular-menu-list");
   const statsMonth = document.querySelector("#stats-month");
+  const csvButton = document.querySelector("#download-orders-csv");
   const orders = new Map();
   const knownOrderIds = new Set();
   let monthlyOrders = [];
@@ -381,6 +382,7 @@ async function setupAdminView() {
     document.querySelector("#stat-active").textContent = `${summary.active}건`;
     document.querySelector("#stat-done").textContent = `${summary.done}건`;
     document.querySelector("#stat-canceled").textContent = `${summary.canceled}건`;
+    csvButton.disabled = monthlyOrders.length === 0;
     popularList.replaceChildren();
     if (!summary.popular.length) {
       const empty = document.createElement("li");
@@ -398,6 +400,18 @@ async function setupAdminView() {
       popularList.append(item);
     });
   }
+
+  csvButton.addEventListener("click", () => {
+    const blob = new Blob(["\ufeff", ordersToCsv(monthlyOrders)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `주문내역-${statsMonth.value}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url));
+  });
 
   function chime() {
     if (!audioEnabled || !audioContext) return;

@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#172238" />
     <meta name="description" content="2층 음료 주문과 1층 제조 접수를 연결하는 간단한 주문 화면" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=menu-tabs-1" />
+    <link rel="stylesheet" href="./styles.css?v=stats-csv-1" />
     <title>한 잔 주문</title>
-    <script type="module" crossorigin src="./assets/index-qpjs2-Na.js"></script>
+    <script type="module" crossorigin src="./assets/index-Cq60Yh5j.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -181,6 +181,13 @@
             <div class="popular-card">
               <h3>인기 메뉴</h3>
               <ol id="popular-menu-list"></ol>
+            </div>
+            <div class="csv-card">
+              <div>
+                <h3>주문 내역 CSV</h3>
+                <p>선택한 달의 주문자, 인원수, 메뉴, 주문시간을 파일로 확인할 수 있어요.</p>
+              </div>
+              <button id="download-orders-csv" class="secondary-button" type="button" disabled>CSV 다운로드</button>
             </div>
           </section>
         </div>
