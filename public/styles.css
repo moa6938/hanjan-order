@@ -180,7 +180,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .admin-menu-list { display: grid; gap: 10px; margin-top: 10px; }
 .admin-menu-group { display: grid; gap: 10px; margin-top: 14px; }
 .admin-menu-group h3 { margin: 0; color: #4b596f; font-size: 0.9rem; letter-spacing: 0.08em; }
-.admin-menu-item { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 15px 16px; border: 1px solid #e2e6ee; border-radius: 14px; }
+.admin-menu-item { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center; padding: 15px 16px; border: 1px solid #e2e6ee; border-radius: 14px; }
 .admin-menu-name { display: flex; align-items: center; gap: 12px; font-weight: 800; }
 .admin-menu-name span:first-child { font-size: 1.5rem; }
 .admin-menu-name input { width: min(100%, 300px); }
@@ -188,6 +188,9 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .admin-menu-actions { display: flex; gap: 8px; }
 .admin-menu-actions button { min-height: 40px; padding: 0 13px; border: 1px solid #d3d9e4; border-radius: 10px; background: #f5f7fb; color: #172238; font-weight: 800; }
 .admin-menu-actions .danger { color: #b6352c; }
+.admin-menu-order { display: flex; gap: 6px; }
+.admin-menu-order button { min-height: 40px; padding: 0 11px; border: 1px solid #bfc8d7; border-radius: 10px; background: #fff; color: #172238; font-weight: 800; }
+.admin-menu-order button:disabled { opacity: 0.35; }
 
 .order-list { display: grid; gap: 14px; margin-top: 28px; }
 .order-card { display: grid; grid-template-columns: 110px 1fr auto; gap: 22px; align-items: center; padding: 22px; border: 1px solid #dfe4ee; border-left: 6px solid #ff6a5b; border-radius: 16px; background: #fff; box-shadow: 0 12px 32px rgba(42, 53, 74, 0.05); }

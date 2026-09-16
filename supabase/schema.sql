@@ -388,6 +388,30 @@ begin
 end;
 $$;
 
+create or replace function public.admin_reorder_menu(pin text, ordered_menu_ids text[])
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+  if coalesce(cardinality(ordered_menu_ids), 0) <> (select count(*) from public.menu_items)
+    or (select count(distinct id) from unnest(ordered_menu_ids) as ordered_id(id)) <> cardinality(ordered_menu_ids)
+    or exists (select 1 from unnest(ordered_menu_ids) as ordered_id(id) where not exists (select 1 from public.menu_items where menu_items.id = ordered_id.id)) then
+    raise exception 'invalid menu order' using errcode = '22023';
+  end if;
+
+  update public.menu_items as menu
+  set sort_order = ordered.position
+  from unnest(ordered_menu_ids) with ordinality as ordered(id, position)
+  where menu.id = ordered.id;
+  return true;
+end;
+$$;
+
 create or replace function public.admin_remove_menu(pin text, menu_id text)
 returns boolean
 language plpgsql
@@ -418,6 +442,7 @@ revoke all on function public.admin_add_menu(text, text, text) from public;
 revoke all on function public.admin_add_menu(text, text, text, text) from public;
 revoke all on function public.admin_rename_menu(text, text, text) from public;
 revoke all on function public.admin_set_menu_available(text, text, boolean) from public;
+revoke all on function public.admin_reorder_menu(text, text[]) from public;
 revoke all on function public.admin_remove_menu(text, text) from public;
 
 grant execute on function public.create_order(jsonb, text, text, integer, uuid) to anon, authenticated;
@@ -431,6 +456,7 @@ grant execute on function public.admin_add_menu(text, text, text) to anon, authe
 grant execute on function public.admin_add_menu(text, text, text, text) to anon, authenticated;
 grant execute on function public.admin_rename_menu(text, text, text) to anon, authenticated;
 grant execute on function public.admin_set_menu_available(text, text, boolean) to anon, authenticated;
+grant execute on function public.admin_reorder_menu(text, text[]) to anon, authenticated;
 grant execute on function public.admin_remove_menu(text, text) to anon, authenticated;
 
 -- Run this separately in the SQL Editor with the real PIN; do not commit it:

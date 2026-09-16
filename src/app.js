@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
+import { reorderedMenuIds } from "./menu-order.js";
 import { activeOrderKey, clearActiveOrder, readActiveOrder, saveActiveOrder } from "./order-storage.js";
 import { ordersToCsv, summarizeOrders } from "./stats.js";
 
@@ -495,7 +496,8 @@ async function setupAdminView() {
       group.className = "admin-menu-group";
       group.append(heading);
 
-      items.filter((item) => item.category === category).forEach((item) => {
+      const categoryItems = items.filter((item) => item.category === category);
+      categoryItems.forEach((item, index) => {
         const row = document.createElement("div");
         row.className = "admin-menu-item";
 
@@ -510,6 +512,29 @@ async function setupAdminView() {
         input.setAttribute("aria-label", `${item.name} 이름`);
         status.textContent = item.is_available ? "판매 중" : "품절";
         name.append(icon, input, status);
+
+        const orderActions = document.createElement("div");
+        orderActions.className = "admin-menu-order";
+        [["up", "↑ 위로"], ["down", "↓ 아래로"]].forEach(([direction, label]) => {
+          const move = document.createElement("button");
+          move.type = "button";
+          move.textContent = label;
+          move.setAttribute("aria-label", `${item.name} ${direction === "up" ? "위로 이동" : "아래로 이동"}`);
+          move.disabled = direction === "up" ? index === 0 : index === categoryItems.length - 1;
+          move.addEventListener("click", async () => {
+            const orderedIds = reorderedMenuIds(items, item.id, direction);
+            if (!orderedIds) return;
+            menuError.textContent = "";
+            orderActions.querySelectorAll("button").forEach((button) => (button.disabled = true));
+            const { error } = await supabase.rpc("admin_reorder_menu", {
+              pin: adminPin,
+              ordered_menu_ids: orderedIds
+            });
+            if (error) menuError.textContent = readableError(error);
+            else await refreshAdminMenu();
+          });
+          orderActions.append(move);
+        });
 
         const actions = document.createElement("div");
         actions.className = "admin-menu-actions";
@@ -558,7 +583,7 @@ async function setupAdminView() {
         });
 
         actions.append(rename, availability, remove);
-        row.append(name, actions);
+        row.append(name, orderActions, actions);
         group.append(row);
       });
       menuList.append(group);

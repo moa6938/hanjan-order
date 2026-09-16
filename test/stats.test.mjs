@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { reorderedMenuIds } from "../src/menu-order.js";
 import { activeOrderKey, clearActiveOrder, readActiveOrder, saveActiveOrder } from "../src/order-storage.js";
 import { ordersToCsv, summarizeOrders } from "../src/stats.js";
 
@@ -47,3 +48,15 @@ clearActiveOrder(storage);
 assert.equal(readActiveOrder(storage), null);
 
 console.log("order storage test passed");
+
+const menu = [
+  { id: "ade-1", category: "ADE" },
+  { id: "non-1", category: "NON SODA" },
+  { id: "ade-2", category: "ADE" },
+  { id: "non-2", category: "NON SODA" }
+];
+assert.deepEqual(reorderedMenuIds(menu, "ade-2", "up"), ["ade-2", "non-1", "ade-1", "non-2"]);
+assert.deepEqual(reorderedMenuIds(menu, "non-1", "down"), ["ade-1", "non-2", "ade-2", "non-1"]);
+assert.equal(reorderedMenuIds(menu, "ade-1", "up"), null);
+
+console.log("menu order test passed");
