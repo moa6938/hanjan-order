@@ -231,6 +231,30 @@ begin
 end;
 $$;
 
+create or replace function public.admin_list_orders_by_month(pin text, selected_month date)
+returns setof public.orders
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  month_start date := date_trunc('month', selected_month)::date;
+begin
+  if not private.admin_pin_ok(pin) then
+    raise exception 'invalid admin pin' using errcode = '42501';
+  end if;
+  if selected_month is null then
+    raise exception 'invalid month';
+  end if;
+  return query
+    select * from public.orders
+    where order_day >= month_start
+      and order_day < (month_start + interval '1 month')::date
+    order by created_at desc;
+end;
+$$;
+
 create or replace function public.admin_update_order(pin text, order_id uuid, next_status text)
 returns public.orders
 language plpgsql
@@ -388,6 +412,7 @@ revoke all on function public.list_menu_items() from public;
 revoke all on function public.get_order(uuid) from public;
 revoke all on function public.admin_check_pin(text) from public;
 revoke all on function public.admin_list_orders(text) from public;
+revoke all on function public.admin_list_orders_by_month(text, date) from public;
 revoke all on function public.admin_update_order(text, uuid, text) from public;
 revoke all on function public.admin_add_menu(text, text, text) from public;
 revoke all on function public.admin_add_menu(text, text, text, text) from public;
@@ -400,6 +425,7 @@ grant execute on function public.list_menu_items() to anon, authenticated;
 grant execute on function public.get_order(uuid) to anon, authenticated;
 grant execute on function public.admin_check_pin(text) to anon, authenticated;
 grant execute on function public.admin_list_orders(text) to anon, authenticated;
+grant execute on function public.admin_list_orders_by_month(text, date) to anon, authenticated;
 grant execute on function public.admin_update_order(text, uuid, text) to anon, authenticated;
 grant execute on function public.admin_add_menu(text, text, text) to anon, authenticated;
 grant execute on function public.admin_add_menu(text, text, text, text) to anon, authenticated;

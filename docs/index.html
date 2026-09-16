@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#172238" />
     <meta name="description" content="2층 음료 주문과 1층 제조 접수를 연결하는 간단한 주문 화면" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=admin-tabs-stats-1" />
+    <link rel="stylesheet" href="./styles.css?v=monthly-stats-1" />
     <title>한 잔 주문</title>
-    <script type="module" crossorigin src="./assets/index-_mdqweKM.js"></script>
+    <script type="module" crossorigin src="./assets/index-p3bUYpse.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -137,9 +137,12 @@
             <div class="stats-heading">
               <div>
                 <p class="eyebrow">운영 현황</p>
-                <h2>오늘 통계</h2>
+                <h2>월별 통계</h2>
               </div>
-              <span id="stats-date"></span>
+              <label class="month-picker">
+                <span>조회 월</span>
+                <input id="stats-month" type="month" />
+              </label>
             </div>
             <div class="stats-grid">
               <article><span>전체 주문</span><strong id="stat-orders">0건</strong></article>

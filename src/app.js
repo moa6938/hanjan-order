@@ -295,25 +295,28 @@ async function setupAdminView() {
   const tabs = [...document.querySelectorAll("[data-admin-tab]")];
   const panels = [...document.querySelectorAll(".admin-panel")];
   const popularList = document.querySelector("#popular-menu-list");
+  const statsMonth = document.querySelector("#stats-month");
   const orders = new Map();
   const knownOrderIds = new Set();
+  let monthlyOrders = [];
   let audioContext;
   let audioEnabled = false;
   let adminPin = "";
   let hasLoaded = false;
 
+  statsMonth.value = todayInSeoul().slice(0, 7);
+  statsMonth.max = statsMonth.value;
+
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       tabs.forEach((item) => item.setAttribute("aria-selected", String(item === tab)));
       panels.forEach((panel) => { panel.hidden = panel.id !== `${tab.dataset.adminTab}-panel`; });
+      if (tab.dataset.adminTab === "stats" && adminPin) refreshMonthlyStats().catch(() => setConnectionStatus(false));
     });
   });
 
   function renderStats() {
-    const summary = summarizeOrders([...orders.values()], todayInSeoul());
-    document.querySelector("#stats-date").textContent = new Intl.DateTimeFormat("ko-KR", {
-      timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "short"
-    }).format(new Date());
+    const summary = summarizeOrders(monthlyOrders);
     document.querySelector("#stat-orders").textContent = `${summary.orders}건`;
     document.querySelector("#stat-drinks").textContent = `${summary.drinks}잔`;
     document.querySelector("#stat-active").textContent = `${summary.active}건`;
@@ -527,7 +530,7 @@ async function setupAdminView() {
             } else {
               orders.set(data.id, data);
               render();
-              renderStats();
+              refreshMonthlyStats().catch(() => setConnectionStatus(false));
             }
           });
           return button;
@@ -548,11 +551,22 @@ async function setupAdminView() {
       knownOrderIds.add(order.id);
     });
     render();
-    renderStats();
     setConnectionStatus(true);
     if (newOrderArrived) chime();
     hasLoaded = true;
   }
+
+  async function refreshMonthlyStats() {
+    const { data, error } = await supabase.rpc("admin_list_orders_by_month", {
+      pin: adminPin,
+      selected_month: `${statsMonth.value}-01`
+    });
+    if (error) throw error;
+    monthlyOrders = data;
+    renderStats();
+  }
+
+  statsMonth.addEventListener("change", () => refreshMonthlyStats().catch(() => setConnectionStatus(false)));
 
   async function startDashboard() {
     const orderUrl = `${location.origin}${location.pathname}#order`;
@@ -565,9 +579,10 @@ async function setupAdminView() {
       event.currentTarget.textContent = "복사됨";
     });
 
-    await Promise.all([refreshOrders(), refreshAdminMenu()]);
+    await Promise.all([refreshOrders(), refreshAdminMenu(), refreshMonthlyStats()]);
     setInterval(() => refreshOrders().catch(() => setConnectionStatus(false)), 2500);
     setInterval(() => refreshAdminMenu().catch(() => setConnectionStatus(false)), 5000);
+    setInterval(() => refreshMonthlyStats().catch(() => setConnectionStatus(false)), 30000);
   }
 
   login.addEventListener("submit", async (event) => {

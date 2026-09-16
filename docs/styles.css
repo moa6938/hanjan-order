@@ -188,7 +188,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .stats-panel { display: grid; gap: 20px; }
 .stats-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
 .stats-heading h2 { margin: 0; font-size: 1.8rem; }
-.stats-heading > span { color: #687386; font-weight: 750; }
+.month-picker { display: grid; gap: 6px; color: #687386; font-size: 0.8rem; font-weight: 750; }
+.month-picker input { min-height: 44px; padding: 0 12px; border: 1px solid #d4dae5; border-radius: 11px; background: #fff; color: #172238; font: inherit; font-weight: 750; }
 .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
 .stats-grid article { display: grid; gap: 10px; padding: 20px; border: 1px solid #dfe4ee; border-radius: 16px; background: #fff; }
 .stats-grid span { color: #687386; font-size: 0.875rem; font-weight: 750; }
