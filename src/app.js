@@ -34,7 +34,17 @@ function formatCustomer(order) {
 }
 
 function formatTime(iso) {
-  return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+}
+
+function formatDate(iso) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short"
+  }).format(new Date(iso));
 }
 
 function getDeviceId() {
@@ -681,9 +691,21 @@ async function setupAdminView() {
       return;
     }
 
+    let currentDay = "";
     [...orders.values()]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .forEach((order) => {
+        if (order.order_day !== currentDay) {
+          currentDay = order.order_day;
+          const heading = document.createElement("h2");
+          const date = document.createElement("time");
+          heading.className = "order-date-heading";
+          date.dateTime = currentDay;
+          date.textContent = `${currentDay === todayInSeoul() ? "오늘 · " : ""}${formatDate(order.created_at)}`;
+          heading.append(date);
+          list.append(heading);
+        }
+
         const card = document.createElement("article");
         card.className = `order-card is-${order.status}`;
 
@@ -692,6 +714,7 @@ async function setupAdminView() {
         const strong = document.createElement("strong");
         const time = document.createElement("time");
         strong.textContent = displayId(order);
+        time.dateTime = order.created_at;
         time.textContent = formatTime(order.created_at);
         number.append(strong, time);
 

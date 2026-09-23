@@ -206,6 +206,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .admin-menu-order button:disabled { opacity: 0.35; }
 
 .order-list { display: grid; gap: 14px; margin-top: 28px; }
+.order-date-heading { margin: 18px 0 0; padding: 12px 16px; border-radius: 12px; background: #172238; color: #fff; font-size: 1.05rem; }
+.order-date-heading:first-child { margin-top: 0; }
 .order-card { display: grid; grid-template-columns: 110px 1fr auto; gap: 22px; align-items: center; padding: 22px; border: 1px solid #dfe4ee; border-left: 6px solid #ff6a5b; border-radius: 16px; background: #fff; box-shadow: 0 12px 32px rgba(42, 53, 74, 0.05); }
 .order-card.is-done, .order-card.is-canceled { opacity: 0.58; border-left-color: #98a2b3; }
 .order-number strong { display: block; font-size: 1.45rem; }
