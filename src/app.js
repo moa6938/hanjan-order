@@ -448,8 +448,8 @@ async function setupAdminView() {
   const deleteMonthButton = document.querySelector("#delete-month-orders");
   const orders = new Map();
   const knownOrderIds = new Set();
+  const alertSound = new Audio("./door-bell-ii.mp3");
   let monthlyOrders = [];
-  let audioContext;
   let audioEnabled = false;
   let adminPin = "";
   let hasLoaded = false;
@@ -528,26 +528,12 @@ async function setupAdminView() {
   });
 
   function chime() {
-    if (!audioEnabled || !audioContext) return;
-    const now = audioContext.currentTime;
-    [660, 880].forEach((frequency, index) => {
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      oscillator.frequency.value = frequency;
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      const start = now + index * 0.18;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.28, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.24);
-      oscillator.start(start);
-      oscillator.stop(start + 0.25);
-    });
+    if (!audioEnabled) return;
+    alertSound.currentTime = 0;
+    alertSound.play().catch(() => {});
   }
 
-  audioButton.addEventListener("click", async () => {
-    audioContext ||= new AudioContext();
-    await audioContext.resume();
+  audioButton.addEventListener("click", () => {
     audioEnabled = true;
     audioButton.textContent = "🔔 알림 켜짐";
     audioButton.classList.add("is-on");
