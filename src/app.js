@@ -692,17 +692,21 @@ async function setupAdminView() {
     }
 
     let currentDay = "";
-    [...orders.values()]
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .forEach((order) => {
+    const sortedOrders = [...orders.values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    sortedOrders.forEach((order) => {
         if (order.order_day !== currentDay) {
           currentDay = order.order_day;
           const heading = document.createElement("h2");
           const date = document.createElement("time");
+          const count = document.createElement("strong");
           heading.className = "order-date-heading";
           date.dateTime = currentDay;
           date.textContent = `${currentDay === todayInSeoul() ? "오늘 · " : ""}${formatDate(order.created_at)}`;
-          heading.append(date);
+          const drinks = sortedOrders
+            .filter((item) => item.order_day === currentDay)
+            .reduce((total, item) => total + item.items.reduce((sum, drink) => sum + Number(drink.quantity), 0), 0);
+          count.textContent = `총 ${drinks}잔`;
+          heading.append(date, count);
           list.append(heading);
         }
 
