@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
-    <link rel="stylesheet" href="./styles.css?v=webpush-2" />
+    <link rel="stylesheet" href="./styles.css?v=analytics-1" />
     <title>한 잔 주문</title>
   </head>
   <body>
@@ -190,24 +190,71 @@
             <div class="stats-heading">
               <div>
                 <p class="eyebrow">운영 현황</p>
-                <h2>월별 통계</h2>
+                <h2>주문 통계</h2>
+                <p id="stats-period" class="stats-subtitle"></p>
               </div>
               <label class="month-picker">
                 <span>조회 월</span>
-                <input id="stats-month" type="month" />
+                <input id="stats-month" type="month" required />
               </label>
             </div>
+            <p id="stats-message" class="stats-message" role="status" aria-live="polite" hidden></p>
             <div class="stats-grid">
-              <article><span>전체 주문</span><strong id="stat-orders">0건</strong></article>
-              <article><span>주문 음료</span><strong id="stat-drinks">0잔</strong></article>
-              <article><span>접수·제조 중</span><strong id="stat-active">0건</strong></article>
-              <article><span>완료</span><strong id="stat-done">0건</strong></article>
-              <article><span>취소</span><strong id="stat-canceled">0건</strong></article>
+              <article><span>전체 주문</span><strong id="stat-orders">0건</strong><small id="stat-valid-orders">취소 제외 0건</small></article>
+              <article class="stat-emphasis"><span>주문 음료</span><strong id="stat-drinks">0잔</strong><small>취소 주문 제외</small></article>
+              <article><span>이용인원</span><strong id="stat-people">0명</strong><small>주문 시 입력 인원 합계</small></article>
+              <article><span>일평균 음료</span><strong id="stat-average">0잔</strong><small id="stat-ordering-days">주문이 있는 0일 기준</small></article>
+              <article><span>완료 주문</span><strong id="stat-done">0건</strong><small id="stat-rate">완료율 0%</small></article>
+              <article><span>취소 주문</span><strong id="stat-canceled">0건</strong><small id="stat-cancel-rate">전체 주문 중 0%</small></article>
             </div>
-            <div class="popular-card">
-              <h3>인기 메뉴</h3>
-              <ol id="popular-menu-list"></ol>
+            <div class="stats-insights" aria-label="통계 요약">
+              <p>접수·제조 중 <strong id="stat-active">0건</strong></p>
+              <p>가장 많이 주문한 요일 <strong id="stats-peak-weekday">—</strong></p>
+              <p>가장 붐비는 시간 <strong id="stats-peak-hour">—</strong></p>
             </div>
+            <p class="stats-basis">한국 시간 기준 · 음료·이용인원·그래프는 취소 주문 제외 · 이용인원은 중복 방문을 포함한 누적 인원입니다.</p>
+            <p id="stats-empty" class="stats-empty" hidden>선택한 기간에 주문이 없어요. 다른 달을 선택해 보세요.</p>
+
+            <section class="analytics-card" aria-labelledby="daily-heading">
+              <div class="analytics-heading">
+                <div><h3 id="daily-heading">일별 주문 흐름</h3><p>날짜별 주문 음료 수 · 오늘까지 집계</p></div>
+                <span id="stats-daily-peak" class="analytics-highlight">—</span>
+              </div>
+              <div class="chart-scroll" tabindex="0" role="region" aria-label="일별 음료 수 그래프. 작은 화면에서는 좌우로 이동할 수 있습니다.">
+                <ol id="stats-daily-chart" class="vertical-chart daily-chart"></ol>
+              </div>
+              <details class="stats-details">
+                <summary>일별 수치 자세히 보기</summary>
+                <div class="table-scroll"><table class="analytics-table"><caption class="sr-only">일별 주문·음료·이용인원·취소</caption><thead><tr><th scope="col">날짜</th><th scope="col">주문</th><th scope="col">음료</th><th scope="col">이용인원</th><th scope="col">취소</th></tr></thead><tbody id="stats-daily-body"></tbody></table></div>
+              </details>
+            </section>
+
+            <div class="analytics-columns">
+              <section class="analytics-card" aria-labelledby="weekday-heading">
+                <div class="analytics-heading">
+                  <div><h3 id="weekday-heading">요일별 비교</h3><p id="stats-weekday-basis">선택한 달의 요일별 음료 합계</p></div>
+                  <div class="stats-segment" role="group" aria-label="요일별 집계 방식">
+                    <button type="button" data-weekday-metric="total" aria-pressed="true">합계</button>
+                    <button type="button" data-weekday-metric="average" aria-pressed="false">하루 평균</button>
+                  </div>
+                </div>
+                <ol id="stats-weekday-chart" class="vertical-chart weekday-chart"></ol>
+              </section>
+              <section class="analytics-card" aria-labelledby="weekly-heading">
+                <div class="analytics-heading"><div><h3 id="weekly-heading">주간별 집계</h3><p>월요일~일요일 · 선택한 달에 포함된 날짜만</p></div></div>
+                <div class="table-scroll"><table class="analytics-table weekly-table"><caption class="sr-only">주간별 주문·음료·이용인원·취소</caption><thead><tr><th scope="col">기간</th><th scope="col">주문</th><th scope="col">음료</th><th scope="col">인원</th><th scope="col">취소</th></tr></thead><tbody id="stats-weekly-body"></tbody></table></div>
+              </section>
+            </div>
+
+            <section class="analytics-card" aria-labelledby="hours-heading">
+              <div class="analytics-heading"><div><h3 id="hours-heading">시간대별 주문량</h3><p>주문 접수 시간 기준 · 각 시간대의 음료 수</p></div><span class="analytics-highlight">0~23시</span></div>
+              <div class="chart-scroll" tabindex="0" role="region" aria-label="시간대별 음료 수 그래프. 작은 화면에서는 좌우로 이동할 수 있습니다."><ol id="stats-hour-chart" class="vertical-chart hour-chart"></ol></div>
+            </section>
+
+            <section class="analytics-card" aria-labelledby="menus-heading">
+              <div class="analytics-heading"><div><h3 id="menus-heading">메뉴별 주문 현황</h3><p>주문된 모든 메뉴 · 음료 수가 많은 순</p></div><span id="stats-menu-count" class="analytics-highlight">0개 메뉴</span></div>
+              <div class="table-scroll"><table class="analytics-table menu-stats-table"><caption class="sr-only">메뉴별 주문 건수·음료 수·전체 음료에서 차지하는 비중</caption><thead><tr><th scope="col">메뉴</th><th scope="col">주문</th><th scope="col">음료</th><th scope="col">비중</th></tr></thead><tbody id="stats-menu-body"></tbody></table></div>
+            </section>
             <div class="csv-card">
               <div>
                 <h3>주문 내역 CSV</h3>

@@ -2,7 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import { reorderedMenuIds } from "./menu-order.js";
 import { activeOrderKey, clearActiveOrder, isOrderId, orderLookupCode, readActiveOrder, readActiveOrderId, saveActiveOrder } from "./order-storage.js";
-import { ordersToCsv, summarizeOrders } from "./stats.js";
+import { analyzeOrders, ordersToCsv } from "./stats.js";
+import { loadMonthlyOrders } from "./stats-data.js";
+import { createStatsView } from "./stats-view.js";
 import { setupPush } from "./push.js";
 
 const SUPABASE_URL = "https://oltgqudykkdsbifcuruy.supabase.co";
@@ -445,7 +447,9 @@ async function setupAdminView() {
   const menuError = document.querySelector("#menu-error");
   const tabs = [...document.querySelectorAll("[data-admin-tab]")];
   const panels = [...document.querySelectorAll(".admin-panel")];
-  const popularList = document.querySelector("#popular-menu-list");
+  const statsPanel = document.querySelector("#stats-panel");
+  const statsView = createStatsView(statsPanel);
+  const statsMessage = document.querySelector("#stats-message");
   const statsMonth = document.querySelector("#stats-month");
   const csvButton = document.querySelector("#download-orders-csv");
   const deleteMonthButton = document.querySelector("#delete-month-orders");
@@ -453,6 +457,9 @@ async function setupAdminView() {
   const knownOrderIds = new Set();
   const alertSound = new Audio("./door-bell-ii.mp3");
   let monthlyOrders = [];
+  let monthlyLoadedMonth = "";
+  let statsRequestId = 0;
+  let deletingMonth = false;
   let audioEnabled = false;
   let adminPin = "";
   let hasLoaded = false;
@@ -469,30 +476,9 @@ async function setupAdminView() {
   });
 
   function renderStats() {
-    const summary = summarizeOrders(monthlyOrders);
-    document.querySelector("#stat-orders").textContent = `${summary.orders}건`;
-    document.querySelector("#stat-drinks").textContent = `${summary.drinks}잔`;
-    document.querySelector("#stat-active").textContent = `${summary.active}건`;
-    document.querySelector("#stat-done").textContent = `${summary.done}건`;
-    document.querySelector("#stat-canceled").textContent = `${summary.canceled}건`;
+    statsView.render(analyzeOrders(monthlyOrders, { month: statsMonth.value, today: todayInSeoul() }));
     csvButton.disabled = monthlyOrders.length === 0;
-    deleteMonthButton.disabled = monthlyOrders.length === 0;
-    popularList.replaceChildren();
-    if (!summary.popular.length) {
-      const empty = document.createElement("li");
-      empty.textContent = "아직 집계할 주문이 없어요.";
-      popularList.append(empty);
-      return;
-    }
-    summary.popular.forEach(([name, quantity]) => {
-      const item = document.createElement("li");
-      const label = document.createElement("span");
-      const count = document.createElement("strong");
-      label.textContent = name;
-      count.textContent = `${quantity}잔`;
-      item.append(label, count);
-      popularList.append(item);
-    });
+    deleteMonthButton.disabled = deletingMonth || monthlyOrders.length === 0;
   }
 
   csvButton.addEventListener("click", () => {
@@ -508,26 +494,30 @@ async function setupAdminView() {
   });
 
   deleteMonthButton.addEventListener("click", async () => {
-    const [year, month] = statsMonth.value.split("-");
+    if (deletingMonth || statsPanel.getAttribute("aria-busy") === "true" || monthlyLoadedMonth !== statsMonth.value || !monthlyOrders.length) return;
+    const deletionMonth = statsMonth.value;
+    const [year, month] = deletionMonth.split("-");
     const monthLabel = `${year}년 ${Number(month)}월`;
-    const confirmed = confirm(
-      `${monthLabel} 주문 데이터 ${monthlyOrders.length}건을 모두 영구 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`
-    );
-    if (!confirmed) return;
+    if (!confirm(`${monthLabel} 주문 데이터 ${monthlyOrders.length}건을 모두 영구 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
 
+    deletingMonth = true;
+    statsMonth.disabled = true;
     deleteMonthButton.disabled = true;
-    const { data: removedCount, error } = await supabase.rpc("admin_delete_orders_by_month", {
-      pin: adminPin,
-      selected_month: `${statsMonth.value}-01`
-    });
-    if (error) {
+    try {
+      const { data: removedCount, error } = await supabase.rpc("admin_delete_orders_by_month", {
+        pin: adminPin,
+        selected_month: `${deletionMonth}-01`
+      });
+      if (error) throw error;
+      alert(`${removedCount}건의 주문 데이터를 삭제했습니다.`);
+      await Promise.all([refreshOrders(), refreshMonthlyStats()]);
+    } catch (error) {
       alert(readableError(error));
-      deleteMonthButton.disabled = false;
-      return;
+    } finally {
+      deletingMonth = false;
+      statsMonth.disabled = false;
+      deleteMonthButton.disabled = statsPanel.getAttribute("aria-busy") === "true" || monthlyLoadedMonth !== statsMonth.value || monthlyOrders.length === 0;
     }
-
-    alert(`${removedCount}건의 주문 데이터를 삭제했습니다.`);
-    await Promise.all([refreshOrders(), refreshMonthlyStats()]);
   });
 
   function chime() {
@@ -793,13 +783,34 @@ async function setupAdminView() {
   }
 
   async function refreshMonthlyStats() {
-    const { data, error } = await supabase.rpc("admin_list_orders_by_month", {
-      pin: adminPin,
-      selected_month: `${statsMonth.value}-01`
-    });
-    if (error) throw error;
-    monthlyOrders = data;
-    renderStats();
+    const month = statsMonth.value;
+    const requestId = ++statsRequestId;
+    if (month !== monthlyLoadedMonth) {
+      monthlyOrders = [];
+      renderStats();
+    }
+    csvButton.disabled = true;
+    deleteMonthButton.disabled = true;
+    statsPanel.setAttribute("aria-busy", "true");
+    statsMessage.hidden = false;
+    statsMessage.classList.remove("is-error");
+    statsMessage.textContent = "통계를 불러오는 중…";
+    try {
+      if (month > todayInSeoul().slice(0, 7)) throw new Error("오늘 이전의 달을 선택해 주세요.");
+      const data = await loadMonthlyOrders(supabase, adminPin, month);
+      if (requestId !== statsRequestId || month !== statsMonth.value) return;
+      monthlyOrders = data;
+      monthlyLoadedMonth = month;
+      renderStats();
+      statsMessage.hidden = true;
+    } catch (error) {
+      if (requestId !== statsRequestId || month !== statsMonth.value) return;
+      statsMessage.textContent = "통계를 불러오지 못했어요. 연결 상태를 확인하고 통계 탭을 다시 눌러 주세요.";
+      statsMessage.classList.add("is-error");
+      throw error;
+    } finally {
+      if (requestId === statsRequestId) statsPanel.setAttribute("aria-busy", "false");
+    }
   }
 
   statsMonth.addEventListener("change", () => refreshMonthlyStats().catch(() => setConnectionStatus(false)));
