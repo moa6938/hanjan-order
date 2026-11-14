@@ -248,13 +248,13 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.08; letter-s
 .danger-button:hover:not(:disabled) { background: #fff0ee; }
 .danger-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.push-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; margin: 20px 0; padding: 22px; border: 1px solid #c9dfd3; border-radius: 20px; background: #f0f8f3; }
+.push-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 20px 0; padding: 14px; border: 1px solid #c9dfd3; border-radius: 16px; background: #f0f8f3; }
 .push-panel > div { min-width: 0; }
-.push-panel h2 { margin: 0 0 8px; font-size: 1.1rem; }
-.push-panel p { margin: 7px 0; overflow-wrap: anywhere; }
-.push-panel .push-help { color: #687386; font-size: .875rem; line-height: 1.5; }
+.push-panel p { flex-basis: 100%; margin: 0; color: #687386; font-size: .875rem; overflow-wrap: anywhere; }
 .push-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .push-actions button { max-width: 100%; white-space: normal; }
+.push-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.push-actions button[aria-pressed="true"] { border-color: #26945a; background: #d9f2e3; color: #176a3c; }
 
 @keyframes enter { from { opacity: 0; transform: translateY(8px); } }
 

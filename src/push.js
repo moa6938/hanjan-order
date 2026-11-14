@@ -3,32 +3,45 @@ import { workerReady } from "./pwa.js";
 export function setupPush({ supabase, pin, backendUrl, apiKey }) {
   const enable = document.querySelector("#push-enable");
   const test = document.querySelector("#push-test");
-  const disable = document.querySelector("#push-disable");
   const status = document.querySelector("#push-status");
   if (enable.dataset.ready) return;
   enable.dataset.ready = "true";
-  const controls = [enable, test, disable];
+  let enabled = false;
+  let busy = false;
+  let statusTimer;
+
+  function updateControls() {
+    enable.disabled = busy;
+    test.disabled = busy || !enabled;
+  }
+  function message(text, transient = false) {
+    clearTimeout(statusTimer);
+    status.textContent = text;
+    status.hidden = !text;
+    if (transient) statusTimer = setTimeout(() => message(""), 4000);
+  }
 
   function setEnabled(value) {
-    enable.hidden = value;
-    test.hidden = !value;
-    disable.hidden = !value;
+    enabled = value;
+    enable.textContent = value ? "화면 알림 켜짐" : "화면 알림 꺼짐";
+    enable.setAttribute("aria-pressed", String(value));
+    updateControls();
   }
   async function rpc(name, params) {
     const { data, error } = await supabase.rpc(name, { pin, ...params });
-    if (error) throw new Error(error.code === "42501" ? "관리자 비밀번호를 다시 확인해 주세요." : "알림 기기 정보를 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.");
+    if (error) throw new Error(error.code === "42501" ? "관리자 비밀번호를 다시 확인해 주세요." : "기기 등록 실패. 다시 시도해 주세요.");
     return data;
   }
   async function registration() {
     if (!window.isSecureContext || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-      throw new Error("이 브라우저는 푸시 알림을 지원하지 않아요. 안드로이드 Chrome에서 열어주세요.");
+      throw new Error("알림 미지원 브라우저입니다. Chrome을 사용해 주세요.");
     }
     let timer;
     try {
       const worker = await Promise.race([workerReady, new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error("앱 준비가 지연되고 있어요. 새로고침 후 다시 시도해 주세요.")), 12000);
+        timer = setTimeout(() => reject(new Error("앱 준비 지연. 새로고침해 주세요.")), 12000);
       })]);
-      if (!worker) throw new Error("앱을 준비하지 못했어요. 새로고침해 주세요.");
+      if (!worker) throw new Error("앱 준비 실패. 새로고침해 주세요.");
       return worker;
     } finally { clearTimeout(timer); }
   }
@@ -44,18 +57,31 @@ export function setupPush({ supabase, pin, backendUrl, apiKey }) {
     return result;
   }
   async function run(action) {
-    controls.forEach((button) => { button.disabled = true; });
-    status.textContent = "알림 연결을 확인하고 있어요…";
+    busy = true;
+    updateControls();
+    message("");
     try { await action(); }
-    catch (error) { status.textContent = error.name === "NotAllowedError" ? "브라우저 또는 기기 설정에서 이 사이트의 알림을 허용해 주세요." : error.message || "알림 설정에 실패했어요. 다시 시도해 주세요."; }
-    finally { controls.forEach((button) => { button.disabled = false; }); }
+    catch (error) { message(error.name === "NotAllowedError" ? "브라우저 알림을 허용해 주세요." : error.message || "알림 설정 실패. 다시 시도해 주세요."); }
+    finally { busy = false; updateControls(); }
   }
 
   enable.addEventListener("click", () => {
+    if (enabled) {
+      run(async () => {
+        const subscription = await (await registration()).pushManager.getSubscription();
+        if (subscription) {
+          await rpc("hanjan_push_unregister", { subscription_endpoint: subscription.endpoint });
+          setEnabled(false);
+          await subscription.unsubscribe();
+        }
+        setEnabled(false);
+      });
+      return;
+    }
     // Request permission in the user gesture, before fetching any server data.
     const permission = "Notification" in window ? Notification.requestPermission() : Promise.resolve("unsupported");
     run(async () => {
-      if (await permission !== "granted") throw new Error("Chrome 사이트 설정에서 알림을 허용한 뒤 다시 눌러주세요.");
+      if (await permission !== "granted") throw new Error("Chrome에서 알림을 허용해 주세요.");
       const worker = await registration();
       const { publicKey } = await server();
       const key = Uint8Array.from(atob(publicKey.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - publicKey.length % 4) % 4)), (char) => char.charCodeAt(0));
@@ -70,29 +96,18 @@ export function setupPush({ supabase, pin, backendUrl, apiKey }) {
       try { await rpc("hanjan_push_register", { push_subscription: subscription.toJSON() }); }
       catch (error) { if (created) await subscription.unsubscribe().catch(() => {}); throw error; }
       setEnabled(true);
-      status.textContent = "푸시 알림을 켰어요. ‘알림 테스트’로 수신을 확인하세요.";
     });
   });
   test.addEventListener("click", () => run(async () => {
     const subscription = await (await registration()).pushManager.getSubscription();
-    if (!subscription) { setEnabled(false); throw new Error("기기 연결이 해제됐어요. 알림을 다시 켜주세요."); }
+    if (!subscription) { setEnabled(false); throw new Error("기기 연결 해제. 알림을 다시 켜주세요."); }
     const result = await server({ action: "test", pin, endpoint: subscription.endpoint });
-    if (result.delivered !== 1) throw new Error("알림이 전송되지 않았어요. 기기 설정을 확인해 주세요.");
-    status.textContent = "이 기기로 테스트 알림을 전송했어요. 알림창에 도착했는지 확인하세요.";
-  }));
-  disable.addEventListener("click", () => run(async () => {
-    const subscription = await (await registration()).pushManager.getSubscription();
-    if (subscription) {
-      await rpc("hanjan_push_unregister", { subscription_endpoint: subscription.endpoint });
-      await subscription.unsubscribe();
-    }
-    setEnabled(false);
-    status.textContent = "이 기기의 푸시 알림을 껐어요. 다른 기기는 유지됩니다.";
+    if (result.delivered !== 1) throw new Error("테스트 알림 전송 실패.");
+    message("테스트 알림 전송 완료", true);
   }));
   run(async () => {
     const subscription = await (await registration()).pushManager.getSubscription();
     const saved = subscription && Notification.permission === "granted" && await rpc("hanjan_push_status", { subscription_endpoint: subscription.endpoint });
     setEnabled(Boolean(saved));
-    status.textContent = saved ? "이 기기의 푸시 알림이 켜져 있어요. ‘알림 테스트’로 확인하세요." : "‘화면 꺼짐 알림 켜기’를 눌러 이 태블릿의 알림을 허용하세요.";
   });
 }

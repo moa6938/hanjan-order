@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
-    <link rel="stylesheet" href="./styles.css?v=webpush-1" />
+    <link rel="stylesheet" href="./styles.css?v=webpush-2" />
     <title>한 잔 주문</title>
   </head>
   <body>
@@ -132,19 +132,14 @@
             <button type="button" role="tab" aria-selected="false" aria-controls="stats-panel" data-admin-tab="stats">통계</button>
           </nav>
 
-          <section class="push-panel" aria-labelledby="push-title">
-            <div>
-              <h2 id="push-title">화면 꺼짐 알림</h2>
-              <p id="install-status">Chrome 메뉴에서 앱을 설치할 수 있어요.</p>
-              <p id="push-status" role="status">알림 연결을 확인하고 있어요…</p>
-              <p class="push-help">이 태블릿에서 알림을 한 번 허용해 주세요. 알림 소리는 기기의 알림·방해금지 설정을 따릅니다.</p>
-            </div>
+          <section class="push-panel" aria-label="앱 및 알림">
             <div class="push-actions">
               <button id="install-button" class="secondary-button" type="button">앱 설치</button>
-              <button id="push-enable" class="secondary-button" type="button">화면 꺼짐 알림 켜기</button>
-              <button id="push-test" class="secondary-button" type="button" hidden>알림 테스트</button>
-              <button id="push-disable" class="text-button" type="button" hidden>이 기기 알림 끄기</button>
+              <button id="push-enable" class="secondary-button" type="button" aria-pressed="false">화면 알림 꺼짐</button>
+              <button id="push-test" class="secondary-button" type="button" disabled>테스트 알림</button>
             </div>
+            <p id="install-status" role="status" hidden></p>
+            <p id="push-status" role="status" hidden></p>
           </section>
 
           <section id="orders-panel" class="admin-panel" role="tabpanel">
