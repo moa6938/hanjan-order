@@ -1,0 +1,26 @@
+{
+  "id": "./admin",
+  "name": "한 잔 주문 관리자",
+  "short_name": "한 잔 관리자",
+  "description": "1층 음료 제조 공간의 주문 접수 화면",
+  "start_url": "./#admin",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#172238",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

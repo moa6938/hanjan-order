@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { reorderedMenuIds } from "./menu-order.js";
 import { activeOrderKey, clearActiveOrder, orderLookupCode, readActiveOrder, saveActiveOrder } from "./order-storage.js";
 import { ordersToCsv, summarizeOrders } from "./stats.js";
+import { setupPush } from "./push.js";
 
 const SUPABASE_URL = "https://oltgqudykkdsbifcuruy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Z0wEhJVmJyuS2dS8jXLvaQ_kat48hsY";
@@ -822,6 +823,7 @@ async function setupAdminView() {
       event.currentTarget.textContent = "복사됨";
     });
 
+    setupPush({ supabase, pin: adminPin, backendUrl: SUPABASE_URL, apiKey: SUPABASE_KEY });
     await Promise.all([refreshOrders(), refreshAdminMenu(), refreshMonthlyStats()]);
     setInterval(() => refreshOrders().catch(() => setConnectionStatus(false)), 2500);
     setInterval(() => refreshAdminMenu().catch(() => setConnectionStatus(false)), 5000);

@@ -6,9 +6,11 @@
     <meta name="theme-color" content="#172238" />
     <meta name="description" content="2층 음료 주문과 1층 제조 접수를 연결하는 간단한 주문 화면" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=order-lookup-1" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <link rel="stylesheet" href="./styles.css?v=webpush-1" />
     <title>한 잔 주문</title>
-    <script type="module" crossorigin src="./assets/index-BYLadcVC.js"></script>
+    <script type="module" crossorigin src="./assets/index-DDDd8e9n.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -130,6 +132,21 @@
             <button type="button" role="tab" aria-selected="false" aria-controls="menu-panel" data-admin-tab="menu">메뉴 관리</button>
             <button type="button" role="tab" aria-selected="false" aria-controls="stats-panel" data-admin-tab="stats">통계</button>
           </nav>
+
+          <section class="push-panel" aria-labelledby="push-title">
+            <div>
+              <h2 id="push-title">화면 꺼짐 알림</h2>
+              <p id="install-status">Chrome 메뉴에서 앱을 설치할 수 있어요.</p>
+              <p id="push-status" role="status">알림 연결을 확인하고 있어요…</p>
+              <p class="push-help">이 태블릿에서 알림을 한 번 허용해 주세요. 알림 소리는 기기의 알림·방해금지 설정을 따릅니다.</p>
+            </div>
+            <div class="push-actions">
+              <button id="install-button" class="secondary-button" type="button">앱 설치</button>
+              <button id="push-enable" class="secondary-button" type="button">화면 꺼짐 알림 켜기</button>
+              <button id="push-test" class="secondary-button" type="button" hidden>알림 테스트</button>
+              <button id="push-disable" class="text-button" type="button" hidden>이 기기 알림 끄기</button>
+            </div>
+          </section>
 
           <section id="orders-panel" class="admin-panel" role="tabpanel">
             <aside class="setup-card">
