@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { reorderedMenuIds } from "../src/menu-order.js";
-import { activeOrderKey, clearActiveOrder, orderLookupCode, readActiveOrder, saveActiveOrder } from "../src/order-storage.js";
+import { activeOrderKey, clearActiveOrder, isOrderId, orderLookupCode, readActiveOrder, readActiveOrderId, saveActiveOrder } from "../src/order-storage.js";
 import { ordersToCsv, summarizeOrders } from "../src/stats.js";
 
 const result = summarizeOrders([
@@ -39,9 +39,27 @@ const storage = {
   setItem: (key, value) => values.set(key, value),
   removeItem: (key) => values.delete(key)
 };
-const savedOrder = { id: "order-1", customer_name: "테스트", party_size: 2, items: [{ name: "망고", quantity: 2 }] };
+const savedOrder = { id: "00000000-0000-4000-8000-000000000001", customer_name: "테스트", party_size: 2, items: [{ name: "망고", quantity: 2 }] };
 assert.equal(saveActiveOrder(storage, savedOrder), true);
-assert.equal(storage.getItem(activeOrderKey), "order-1");
+assert.equal(storage.getItem(activeOrderKey), savedOrder.id);
+assert.deepEqual(readActiveOrder(storage), savedOrder);
+assert.equal(readActiveOrderId([storage]), savedOrder.id);
+const validId = savedOrder.id;
+const entry = (value) => ({ getItem: () => value });
+for (const invalid of [null, undefined, "null", "undefined", "", "order-1", "00000000-0000-4000-8000-00000000000g"]) {
+  assert.equal(isOrderId(invalid), false);
+  assert.equal(readActiveOrderId([entry(invalid)]), null);
+  assert.equal(readActiveOrderId([entry(invalid), entry(validId)]), validId);
+  assert.equal(readActiveOrderId([entry(invalid)], `other=1; activeOrderId=${validId}`), validId);
+  assert.equal(saveActiveOrder(storage, { id: invalid }), false);
+  assert.deepEqual(readActiveOrder(storage), savedOrder);
+  assert.equal(readActiveOrder(entry(JSON.stringify({ id: invalid }))), null);
+}
+assert.equal(isOrderId(validId.toUpperCase()), true);
+assert.equal(readActiveOrderId([{ getItem() { throw new Error("unavailable"); } }, entry(validId)]), validId);
+assert.equal(readActiveOrderId([], "activeOrderId=%E0%A4%A"), null);
+assert.equal(readActiveOrderId([], "activeOrderId=null"), null);
+assert.equal(readActiveOrderId([], `activeOrderId=${validId}`), validId);
 assert.deepEqual(readActiveOrder(storage), savedOrder);
 clearActiveOrder(storage);
 assert.equal(readActiveOrder(storage), null);

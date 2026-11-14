@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import { reorderedMenuIds } from "./menu-order.js";
-import { activeOrderKey, clearActiveOrder, orderLookupCode, readActiveOrder, saveActiveOrder } from "./order-storage.js";
+import { activeOrderKey, clearActiveOrder, isOrderId, orderLookupCode, readActiveOrder, readActiveOrderId, saveActiveOrder } from "./order-storage.js";
 import { ordersToCsv, summarizeOrders } from "./stats.js";
 import { setupPush } from "./push.js";
 
@@ -90,16 +90,7 @@ function forgetActiveOrder() {
 }
 
 function rememberedOrderId() {
-  for (const storage of [localStorage, sessionStorage]) {
-    try {
-      const id = storage.getItem(activeOrderKey);
-      if (id) return id;
-    } catch {
-      // Try the next available persistence method.
-    }
-  }
-  const cookieId = document.cookie.match(new RegExp(`(?:^|; )${activeOrderKey}=([^;]*)`))?.[1];
-  return cookieId ? decodeURIComponent(cookieId) : null;
+  return readActiveOrderId([localStorage, sessionStorage], document.cookie);
 }
 
 function setConnectionStatus(connected) {
@@ -240,6 +231,7 @@ async function setupOrderView() {
 
   function startOrderPolling(orderId) {
     clearInterval(pollingTimer);
+    if (!isOrderId(orderId)) return;
     const refresh = async () => {
       const { data: order, error: requestError } = await supabase.rpc("get_order", { order_id: orderId }).maybeSingle();
       setConnectionStatus(!requestError);
