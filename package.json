@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build --base=./",
-    "test": "node test/stats.test.mjs && node test/analytics.test.mjs && node test/stats-data.test.mjs"
+    "test": "node test/stats.test.mjs && node test/analytics.test.mjs && node test/stats-data.test.mjs && node test/polling.test.mjs && node test/app-polling.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.116.0",

@@ -6,6 +6,7 @@ import { analyzeOrders, ordersToCsv } from "./stats.js";
 import { loadMonthlyOrders } from "./stats-data.js";
 import { createStatsView } from "./stats-view.js";
 import { setupPush } from "./push.js";
+import { createPoller } from "./polling.js";
 
 const SUPABASE_URL = "https://oltgqudykkdsbifcuruy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Z0wEhJVmJyuS2dS8jXLvaQ_kat48hsY";
@@ -158,6 +159,11 @@ async function setupOrderView() {
   let restoredActiveOrder = false;
   let submitting = false;
   let activeCategory = menuCategories[0];
+  const menuPoller = createPoller(refreshMenu, {
+    interval: 5000,
+    shouldRun: () => !form.hidden,
+    onError: () => setConnectionStatus(false)
+  });
 
   categoryTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -217,6 +223,7 @@ async function setupOrderView() {
     document.querySelector("#order-summary-text").textContent = `${nameInput.value.trim()} · ${partySizeInput.value}명`;
     intake.hidden = true;
     form.hidden = false;
+    menuPoller.refresh();
     form.scrollIntoView({ behavior: "smooth" });
   }
 
@@ -232,10 +239,12 @@ async function setupOrderView() {
   });
 
   function startOrderPolling(orderId) {
-    clearInterval(pollingTimer);
+    pollingTimer?.stop();
+    pollingTimer = undefined;
     if (!isOrderId(orderId)) return;
-    const refresh = async () => {
+    const poller = createPoller(async () => {
       const { data: order, error: requestError } = await supabase.rpc("get_order", { order_id: orderId }).maybeSingle();
+      if (pollingTimer !== poller) return;
       setConnectionStatus(!requestError);
       if (order) {
         rememberActiveOrder(order);
@@ -247,12 +256,14 @@ async function setupOrderView() {
           lookupForm.hidden = true;
           restoredActiveOrder = true;
         }
+        if (["done", "canceled"].includes(order.status)) poller.stop();
       } else if (!requestError) {
         forgetActiveOrder();
+        poller.stop();
       }
-    };
-    refresh();
-    pollingTimer = setInterval(refresh, 2500);
+    }, { interval: 2500, onError: () => setConnectionStatus(false) });
+    pollingTimer = poller;
+    poller.start();
   }
 
   function renderMenu() {
@@ -322,11 +333,11 @@ async function setupOrderView() {
 
   try {
     await refreshMenu();
-    setInterval(() => refreshMenu().catch(() => setConnectionStatus(false)), 5000);
   } catch (requestError) {
     error.textContent = readableError(requestError);
     setConnectionStatus(false);
   }
+  menuPoller.start();
 
   partySizeInput.addEventListener("input", updateSubmitState);
 
@@ -463,6 +474,21 @@ async function setupAdminView() {
   let audioEnabled = false;
   let adminPin = "";
   let hasLoaded = false;
+  const ordersPoller = createPoller(refreshOrders, {
+    interval: 2500,
+    shouldRun: () => Boolean(adminPin),
+    onError: () => setConnectionStatus(false)
+  });
+  const menuPoller = createPoller(refreshAdminMenu, {
+    interval: 5000,
+    shouldRun: () => Boolean(adminPin) && !document.querySelector("#menu-panel").hidden,
+    onError: () => setConnectionStatus(false)
+  });
+  const statsPoller = createPoller(refreshMonthlyStats, {
+    interval: 30000,
+    shouldRun: () => Boolean(adminPin) && !statsPanel.hidden && !deletingMonth,
+    onError: () => setConnectionStatus(false)
+  });
 
   statsMonth.value = todayInSeoul().slice(0, 7);
   statsMonth.max = statsMonth.value;
@@ -471,7 +497,8 @@ async function setupAdminView() {
     tab.addEventListener("click", () => {
       tabs.forEach((item) => item.setAttribute("aria-selected", String(item === tab)));
       panels.forEach((panel) => { panel.hidden = panel.id !== `${tab.dataset.adminTab}-panel`; });
-      if (tab.dataset.adminTab === "stats" && adminPin) refreshMonthlyStats().catch(() => setConnectionStatus(false));
+      menuPoller.refresh();
+      statsPoller.refresh();
     });
   });
 
@@ -735,7 +762,7 @@ async function setupAdminView() {
           } else {
             orders.delete(order.id);
             render();
-            refreshMonthlyStats().catch(() => setConnectionStatus(false));
+            statsPoller.refresh();
           }
         });
         actions.append(remove);
@@ -756,7 +783,7 @@ async function setupAdminView() {
             } else {
               orders.set(data.id, data);
               render();
-              refreshMonthlyStats().catch(() => setConnectionStatus(false));
+              statsPoller.refresh();
             }
           });
           return button;
@@ -827,10 +854,7 @@ async function setupAdminView() {
     });
 
     setupPush({ supabase, pin: adminPin, backendUrl: SUPABASE_URL, apiKey: SUPABASE_KEY });
-    await Promise.all([refreshOrders(), refreshAdminMenu(), refreshMonthlyStats()]);
-    setInterval(() => refreshOrders().catch(() => setConnectionStatus(false)), 2500);
-    setInterval(() => refreshAdminMenu().catch(() => setConnectionStatus(false)), 5000);
-    setInterval(() => refreshMonthlyStats().catch(() => setConnectionStatus(false)), 30000);
+    await Promise.all([ordersPoller.start(), menuPoller.start(), statsPoller.start()]);
   }
 
   login.addEventListener("submit", async (event) => {
